@@ -32,7 +32,8 @@
 
   window.LMS = {
     done(name)             { record("activity", String(name), 1, 1, true); },
-    score(name, got, max)  { record("activity", String(name), Number(got) || 0, Number(max) || null, false); }
+    score(name, got, max)  { record("activity", String(name), Number(got) || 0, Number(max) || null, false); },
+    section(name)          { record("section", String(name), 1, null, true); }
   };
 
   function record(kind, key, value, max, onlyOnce) {
