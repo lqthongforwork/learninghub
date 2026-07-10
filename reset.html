@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Set a new password — Learning Center</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="login-wrap">
+    <div class="login-card">
+      <p class="eyebrow">Learning Center</p>
+      <h1>Set a new password</h1>
+      <p id="hint" style="color:var(--muted); margin:0 0 1.5rem; font-size:0.9rem;">
+        Choose a new password for your account.
+      </p>
+
+      <div class="field">
+        <label for="pw1">New password</label>
+        <input id="pw1" type="password" autocomplete="new-password" placeholder="At least 8 characters" />
+      </div>
+      <div class="field">
+        <label for="pw2">Repeat new password</label>
+        <input id="pw2" type="password" autocomplete="new-password" placeholder="Same as above" />
+      </div>
+
+      <button id="save" style="width:100%;">Save new password</button>
+      <p id="msg" class="msg"></p>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script>
+    const msg = document.getElementById("msg");
+    let ready = false;
+
+    // When the user arrives from the email link, Supabase creates a
+    // temporary "recovery" session. We wait for it before allowing a save.
+    sb.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || session) ready = true;
+    });
+    sb.auth.getSession().then(({ data }) => { if (data.session) ready = true; });
+
+    document.getElementById("save").addEventListener("click", async () => {
+      const p1 = document.getElementById("pw1").value;
+      const p2 = document.getElementById("pw2").value;
+      msg.className = "msg";
+
+      if (p1.length < 8) { msg.textContent = "Use at least 8 characters."; msg.className = "msg err"; return; }
+      if (p1 !== p2)     { msg.textContent = "The two passwords don't match."; msg.className = "msg err"; return; }
+      if (!ready) {
+        msg.textContent = "This page only works from the link in your reset email. Go back to the sign-in page and click 'Forgot password?'.";
+        msg.className = "msg err";
+        return;
+      }
+
+      const { error } = await sb.auth.updateUser({ password: p1 });
+      if (error) { msg.textContent = "Could not save: " + error.message; msg.className = "msg err"; return; }
+
+      msg.textContent = "Password saved! Taking you to your dashboard…";
+      setTimeout(() => (window.location.href = "dashboard.html"), 1200);
+    });
+  </script>
+</body>
+</html>

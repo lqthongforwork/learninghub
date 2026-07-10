@@ -25,6 +25,9 @@
       </div>
 
       <button id="signin" style="width:100%;">Sign in</button>
+      <p style="text-align:center; margin:0.9rem 0 0;">
+        <a href="#" id="forgot" style="font-size:0.85rem;">Forgot password?</a>
+      </p>
       <p id="msg" class="msg"></p>
     </div>
   </main>
@@ -61,6 +64,24 @@
     }
 
     document.getElementById("signin").addEventListener("click", signIn);
+
+    document.getElementById("forgot").addEventListener("click", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("email").value.trim();
+      msg.className = "msg";
+      if (!email) {
+        msg.textContent = "Type your email above first, then click 'Forgot password?'.";
+        msg.className = "msg err";
+        return;
+      }
+      // Send a reset link that lands on reset.html of THIS site.
+      const redirectTo = new URL("reset.html", window.location.href).href;
+      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo });
+      msg.textContent = error
+        ? "Could not send the email. Try again in a minute."
+        : "Check your inbox — we sent you a password reset link.";
+      if (error) msg.className = "msg err";
+    });
     document.getElementById("password").addEventListener("keydown", (e) => {
       if (e.key === "Enter") signIn();
     });

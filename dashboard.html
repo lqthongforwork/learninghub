@@ -54,7 +54,7 @@
     // ---------- STUDENT VIEW ----------
     async function renderStudent() {
       const { data: lessons } = await sb
-        .from("lessons").select("*").order("sort_order");
+        .from("lessons").select("*").order("sort_order").order("created_at");
       const { data: mine } = await sb
         .from("progress").select("lesson_id, status").eq("student_id", user.id);
 
@@ -94,17 +94,22 @@
     // ---------- ADMIN VIEW ----------
     async function renderAdmin() {
       const { data: lessons } = await sb
-        .from("lessons").select("*").order("sort_order");
+        .from("lessons").select("*").order("sort_order").order("created_at");
 
       // Every student's progress, joined with names + lesson titles.
       const { data: prog } = await sb
         .from("progress")
-        .select("status, updated_at, profiles(full_name), lessons(title)")
+        .select("status, updated_at, profiles(full_name, email), lessons(title)")
         .order("updated_at", { ascending: false });
+
+      const { data: students } = await sb
+        .from("profiles")
+        .select("id, full_name, email, role")
+        .order("created_at");
 
       const progressRows = (prog || []).map(p => `
         <tr>
-          <td>${esc(p.profiles?.full_name || "—")}</td>
+          <td>${esc(p.profiles?.full_name || p.profiles?.email || "—")}</td>
           <td>${esc(p.lessons?.title || "—")}</td>
           <td>${p.status === "completed"
                 ? `<span class="pill done">completed</span>`
@@ -114,7 +119,16 @@
 
       const lessonList = (lessons || []).map(l =>
         `<div class="lesson"><div class="meta"><div class="title">${esc(l.title)}</div>
-         <span class="kind">${esc(l.kind)} · ${esc(l.url)}</span></div></div>`).join("");
+         <span class="kind">#${l.sort_order ?? 0} · ${esc(l.kind)} · ${esc(l.url)}</span></div></div>`).join("");
+
+      const studentRows = (students || []).map(s => `
+        <tr>
+          <td style="width:40%;"><input class="s-name" data-id="${s.id}"
+                value="${esc(s.full_name || "")}" placeholder="Type a name…" /></td>
+          <td>${esc(s.email || "—")}</td>
+          <td>${s.role === "admin" ? `<span class="pill done">admin</span>` : "student"}</td>
+          <td><button class="ghost s-save" data-id="${s.id}">Save</button></td>
+        </tr>`).join("");
 
       app.innerHTML = `
         <p class="eyebrow">Admin</p>
@@ -126,6 +140,8 @@
             <div class="field"><label>Title</label><input id="l-title" placeholder="Lesson 1: Introduction" /></div>
             <div class="field" style="max-width:120px;"><label>Type</label>
               <select id="l-kind"><option value="html">html</option><option value="pdf">pdf</option></select></div>
+            <div class="field" style="max-width:90px;"><label>Order</label>
+              <input id="l-order" type="number" value="${(lessons?.length || 0) + 1}" min="0" /></div>
             <div class="field"><label>Link (URL)</label><input id="l-url" placeholder="https://your-site.github.io/lesson1.html" /></div>
             <button id="l-add">Add</button>
           </div>
@@ -135,6 +151,15 @@
         <div class="card">
           <h2>Lessons (${(lessons || []).length})</h2>
           ${lessonList || `<p class="empty">No lessons yet — add your first one above.</p>`}
+        </div>
+
+        <div class="card">
+          <h2>Students</h2>
+          ${studentRows
+            ? `<table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr></thead>
+               <tbody>${studentRows}</tbody></table>
+               <p class="empty" style="margin-top:0.5rem;">Type a name and click Save — it then appears in the progress table below.</p>`
+            : `<p class="empty">No accounts yet.</p>`}
         </div>
 
         <div class="card">
@@ -149,11 +174,26 @@
         const title = document.getElementById("l-title").value.trim();
         const kind = document.getElementById("l-kind").value;
         const url = document.getElementById("l-url").value.trim();
+        const sort_order = parseInt(document.getElementById("l-order").value, 10) || 0;
         const m = document.getElementById("l-msg");
         if (!title || !url) { m.textContent = "Add a title and a link."; m.className = "msg err"; return; }
-        const { error } = await sb.from("lessons").insert({ title, kind, url });
+        const { error } = await sb.from("lessons").insert({ title, kind, url, sort_order });
         if (error) { m.textContent = "Could not add: " + error.message; m.className = "msg err"; return; }
         renderAdmin();
+      });
+
+      app.querySelectorAll(".s-save").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-id");
+          const input = app.querySelector(`.s-name[data-id="${id}"]`);
+          btn.disabled = true;
+          const { error } = await sb.from("profiles")
+            .update({ full_name: input.value.trim() || null }).eq("id", id);
+          btn.disabled = false;
+          if (error) { alert("Could not save the name: " + error.message); return; }
+          btn.textContent = "Saved ✓";
+          setTimeout(() => (btn.textContent = "Save"), 1500);
+        });
       });
     }
 
