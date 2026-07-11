@@ -77,7 +77,10 @@ const I18N = {
     acc_expired_t: "Access expired",
     acc_expired_m: "Your subscription has expired. Please contact your teacher to renew your access.",
     acc_susp_m: "This account is temporarily suspended. Please contact your teacher.",
-    contact_teacher: "Contact teacher"
+    contact_teacher: "Contact teacher",
+    acc_line: "Access valid until {d} ({n} days left)",
+    acc_warn: "⚠️ Your access expires in {n} day(s) — {d}. Please contact your teacher to renew.",
+    acc_today: "⚠️ Your access expires today. Please contact your teacher to renew."
   },
 
   vi: {
@@ -150,7 +153,10 @@ const I18N = {
     acc_expired_t: "Hết hạn truy cập",
     acc_expired_m: "Gói truy cập của bạn đã hết hạn. Vui lòng liên hệ giáo viên để gia hạn.",
     acc_susp_m: "Tài khoản này đang tạm khóa. Vui lòng liên hệ giáo viên.",
-    contact_teacher: "Liên hệ giáo viên"
+    contact_teacher: "Liên hệ giáo viên",
+    acc_line: "Truy cập đến {d} (còn {n} ngày)",
+    acc_warn: "⚠️ Tài khoản của bạn sẽ hết hạn sau {n} ngày — {d}. Hãy liên hệ giáo viên để gia hạn.",
+    acc_today: "⚠️ Tài khoản của bạn hết hạn hôm nay. Hãy liên hệ giáo viên để gia hạn."
   }
 };
 

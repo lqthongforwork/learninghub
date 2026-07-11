@@ -314,7 +314,25 @@
       const hubFooter = `<footer class="hub-footer">Designed by Thầy Lê Quốc Thông · 📞 Zalo: 0961 923 983</footer>`;
 
       const { data: me } = await sb
-        .from("profiles").select("full_name, bio, avatar_url").eq("id", user.id).single();
+        .from("profiles").select("full_name, bio, avatar_url, access_expires").eq("id", user.id).single();
+
+      // Subscription visibility: quiet line normally, warning when close.
+      let accessNote = "";
+      if (me?.access_expires) {
+        const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+        const daysLeft = Math.round((new Date(me.access_expires) - t0) / 86400000);
+        const dShow = new Date(me.access_expires).toLocaleDateString();
+        if (daysLeft >= 0 && daysLeft <= 7) {
+          accessNote = `
+            <div class="alert-bar" style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
+              <span style="flex:1;">${daysLeft === 0 ? t("acc_today") : tf("acc_warn", { n: daysLeft, d: dShow })}</span>
+              <a class="btn ghost" href="https://zalo.me/0961923983" target="_blank" rel="noopener"
+                 style="text-decoration:none; flex:none;">💬 ${t("contact_teacher")}</a>
+            </div>`;
+        } else if (daysLeft > 7) {
+          accessNote = `<p class="kind" style="margin:-0.4rem 0 0.9rem;">${tf("acc_line", { n: daysLeft, d: dShow })}</p>`;
+        }
+      }
 
       const avatar = me?.avatar_url
         ? `<img src="${esc(me.avatar_url)}" alt="" style="width:84px;height:84px;border-radius:50%;object-fit:cover;border:1px solid var(--line);" />`
@@ -343,6 +361,7 @@
       app.innerHTML = `
         <p class="eyebrow">${t("my_lessons")}</p>
         <h1>${t("welcome")}${me?.full_name ? ", " + esc(me.full_name) : ""}</h1>
+        ${accessNote}
         <div class="search-wrap">
           <input id="hub-search" placeholder="${esc(t("search_ph"))}" autocomplete="off" />
           <div id="search-results" class="search-results" style="display:none;"></div>
