@@ -71,7 +71,9 @@ const I18N = {
     zalo_chat: "Chat on Zalo",
     locked: "Locked",
     locked_hint: "Finish the previous lesson to unlock",
-    time_left: "≈ {t} left"
+    time_left: "≈ {t} left",
+    announcements: "Announcements",
+    ann_all: "All courses"
   },
 
   vi: {
@@ -138,7 +140,9 @@ const I18N = {
     zalo_chat: "Nhắn Zalo",
     locked: "Đã khóa",
     locked_hint: "Hoàn thành bài trước để mở khóa",
-    time_left: "≈ còn {t}"
+    time_left: "≈ còn {t}",
+    announcements: "Thông báo",
+    ann_all: "Tất cả khóa học"
   }
 };
 

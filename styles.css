@@ -60,7 +60,8 @@ button.ghost {
 button.ghost:hover { background: rgba(30,79,143,0.08); }
 button:disabled { opacity: 0.5; cursor: default; }
 
-input, select {
+textarea { resize: vertical; min-height: 60px; }
+input, select, textarea {
   font-family: var(--sans);
   font-size: 0.95rem;
   padding: 0.6rem 0.7rem;

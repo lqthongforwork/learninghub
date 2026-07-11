@@ -133,6 +133,9 @@
         .from("lessons").select("*").order("sort_order").order("created_at");
       const { data: mine } = await sb
         .from("progress").select("lesson_id, status").eq("student_id", user.id);
+      const { data: anns } = await sb
+        .from("announcements").select("*")
+        .order("created_at", { ascending: false }).limit(10);
 
       const done = new Set((mine || []).filter(p => p.status === "completed").map(p => p.lesson_id));
 
@@ -244,6 +247,20 @@
       const looseCard = loose.length
         ? `<div class="card"><h2>${t("other_lessons")}</h2>${loose.map(lessonRow).join("")}</div>` : "";
 
+      // Announcements card (RLS already filtered to this student's courses).
+      const annBody = s => esc(s).replace(/\n/g, "<br>");
+      const annCard = (anns || []).length ? `
+        <div class="card" id="ann-card" style="border-top:4px solid var(--gold);">
+          <h2>📣 ${t("announcements")}</h2>
+          ${(anns || []).map(a => `
+            <div style="padding:0.55rem 0; border-bottom:1px solid var(--line);">
+              <div style="font-size:0.92rem;">${annBody(a.body)}</div>
+              <span class="kind">${a.course_id
+                ? esc((courses || []).find(c => c.id === a.course_id)?.title || "")
+                : t("ann_all")} · ${new Date(a.created_at).toLocaleDateString()}</span>
+            </div>`).join("")}
+        </div>` : "";
+
       // Instructor panel (teacher profile is readable thanks to migration 8).
       const { data: teachers } = await sb
         .from("profiles").select("full_name, avatar_url, bio").eq("role", "admin").limit(1);
@@ -303,6 +320,7 @@
           <input id="hub-search" placeholder="${esc(t("search_ph"))}" autocomplete="off" />
           <div id="search-results" class="search-results" style="display:none;"></div>
         </div>
+        ${annCard}
         ${catSections || `<div class="card"><p class="empty">${t("not_enrolled")}</p></div>`}
         ${looseCard}
         ${instructorCard}
@@ -358,6 +376,7 @@
       const sBox = document.getElementById("search-results");
       const normTxt = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       const sIndex = [
+        ...(anns || []).map(a => ({ type: "ann", title: a.body.slice(0, 70), sub: t("announcements"), obj: a })),
         ...(courses || []).map(c => ({ type: "course", title: c.title, sub: c.category || "", obj: c })),
         ...(lessons || []).map(l => ({
           type: "lesson", title: l.title,
@@ -391,7 +410,7 @@
         sBox.innerHTML = hits.length
           ? hits.map(it => `
               <button class="res" data-i="${sIndex.indexOf(it)}">
-                <span>${it.type === "course" ? "📚" : iconFor(it.obj.kind)}</span>
+                <span>${it.type === "course" ? "📚" : it.type === "ann" ? "📣" : iconFor(it.obj.kind)}</span>
                 <span style="flex:1;">${hiLite(it.title, q)}<br><span class="kind">${esc(it.sub)}</span></span>
               </button>`).join("")
           : `<div class="res" style="cursor:default;">${t("no_results")}</div>`;
@@ -400,7 +419,9 @@
           const it = sIndex[Number(b.getAttribute("data-i"))];
           sBox.style.display = "none"; sInput.value = "";
           if (it.type === "lesson") { openLesson(it.obj); return; }
-          const el = document.getElementById("course-" + it.obj.id);
+          const el = it.type === "ann"
+            ? document.getElementById("ann-card")
+            : document.getElementById("course-" + it.obj.id);
           if (el) {
             const catEl = el.closest(".cat");
             if (catEl) catEl.classList.remove("collapsed");
@@ -469,6 +490,9 @@
         .from("enrollments")
         .select("id, profiles(full_name, email), courses(title)")
         .order("created_at");
+
+      const { data: anns } = await sb
+        .from("announcements").select("*").order("created_at", { ascending: false });
 
       const { data: activity } = await sb
         .from("lesson_activity")
@@ -598,6 +622,7 @@
           <button data-tab="courses">Courses (${(courses || []).length})</button>
           <button data-tab="students">Students (${onlyStudents.length})</button>
           <button data-tab="progress">Progress</button>
+          <button data-tab="announce">Announce${(anns || []).length ? " (" + anns.length + ")" : ""}</button>
         </div>
 
         <div class="tabpane" data-tab="courses">
@@ -690,7 +715,56 @@
                <p class="empty" style="margin-top:0.5rem;">Time counts only while the lesson tab is visible. Sections and scores appear for lessons that include the tracker script.</p>`
             : `<p class="empty">No engagement data yet. It appears once students open lessons that include the tracker script.</p>`}
         </div>
+        </div>
+
+        <div class="tabpane" data-tab="announce">
+        <div class="card">
+          <h2>New announcement</h2>
+          <div class="field"><label>Message</label>
+            <textarea id="a-body" placeholder="No class this Friday — see you next week!"></textarea></div>
+          <div class="form-row">
+            <div class="field" style="max-width:220px;"><label>Send to</label>
+              <select id="a-course"><option value="">All students</option>${courseOptions}</select></div>
+            <button id="a-add">Post announcement</button>
+          </div>
+          <p id="a-msg" class="msg"></p>
+        </div>
+        <div class="card">
+          <h2>Posted announcements</h2>
+          ${(anns || []).length ? (anns || []).map(a => `
+            <div class="lesson">
+              <span class="icon">📣</span>
+              <div class="meta">
+                <div class="title" style="font-weight:500;">${esc(a.body)}</div>
+                <span class="kind">${a.course_id
+                  ? esc((courses || []).find(c => c.id === a.course_id)?.title || "?")
+                  : "All students"} · ${new Date(a.created_at).toLocaleDateString()}</span>
+              </div>
+              <button class="ghost a-del" data-id="${a.id}"
+                      style="color:var(--danger); border-color:var(--danger);">Delete</button>
+            </div>`).join("") : `<p class="empty">Nothing posted yet.</p>`}
+        </div>
         </div>`;
+
+      document.getElementById("a-add").addEventListener("click", async () => {
+        const body = document.getElementById("a-body").value.trim();
+        const course_id = document.getElementById("a-course").value || null;
+        const m = document.getElementById("a-msg");
+        if (!body) { m.textContent = "Write a message first."; m.className = "msg err"; return; }
+        const { error } = await sb.from("announcements").insert({ body, course_id });
+        if (error) { m.textContent = "Could not post: " + error.message; m.className = "msg err"; return; }
+        renderAdmin();
+      });
+
+      app.querySelectorAll(".a-del").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          if (!confirm("Delete this announcement?")) return;
+          btn.disabled = true;
+          const { error } = await sb.from("announcements").delete().eq("id", btn.getAttribute("data-id"));
+          if (error) { btn.disabled = false; alert("Could not delete: " + error.message); return; }
+          renderAdmin();
+        });
+      });
 
       function showTab(t) {
         adminTab = t;
