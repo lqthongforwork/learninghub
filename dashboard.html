@@ -519,13 +519,20 @@
           <td>${new Date(p.updated_at).toLocaleDateString()}</td>
         </tr>`).join("");
 
-      const lessonList = (lessons || []).map(l => `
+      const lessonRowHtml = l => {
+        const cc = (courses || []).find(x => x.id === l.course_id);
+        const ccol = cc?.color || "#1e4f8f";
+        const badge = cc
+          ? `<span class="pill" style="background:${esc(ccol)}22; color:${esc(ccol)}; flex:none;">${esc(cc.title)}</span>`
+          : `<span class="pill todo" style="flex:none;">no course</span>`;
+        return `
         <div class="lesson">
           <span class="icon">${iconFor(l.kind)}</span>
           <div class="meta">
             <div class="title">${esc(l.title)}</div>
             <span class="kind">#${l.sort_order ?? 0} · ${esc(l.kind)} · ${l.storage_path ? "uploaded file" : esc(l.url || "")}</span>
           </div>
+          ${badge}
           ${l.storage_path ? `<button class="ghost open-file" data-path="${esc(l.storage_path)}">Open</button>` : ""}
           <input type="number" class="l-min-edit" data-id="${l.id}" value="${l.est_minutes ?? ""}"
                  min="0" placeholder="min" title="Estimated minutes" style="max-width:70px; flex:none;" />
@@ -537,7 +544,8 @@
           <button class="ghost l-save" data-id="${l.id}">Save</button>
           <button class="ghost l-del" data-id="${l.id}"
                   style="color:var(--danger); border-color:var(--danger);">Delete</button>
-        </div>`).join("");
+        </div>`;
+      };
 
       const studentRows = (students || []).map(s => `
         <tr>
@@ -571,15 +579,24 @@
         <div class="lesson">
           <span style="width:14px;height:14px;border-radius:50%;background:${esc(c.color || "#1e4f8f")};flex:none;"></span>
           <div class="meta"><div class="title">${esc(c.title)}</div>
-            <span class="kind">${(lessons || []).filter(l => l.course_id === c.id).length} lessons${c.category ? " · " + esc(c.category) : ""}</span></div>
-          <input type="color" class="c-color" data-id="${c.id}" value="${esc(c.color || "#1e4f8f")}"
-                 style="width:44px; height:34px; padding:2px; flex:none;" />
-          <input class="c-cat" data-id="${c.id}" value="${esc(c.category || "")}" placeholder="Category"
-                 style="max-width:130px;" />
-          <label style="font-size:0.8rem; color:var(--muted); white-space:nowrap; cursor:pointer;">
-            <input type="checkbox" class="c-seq" data-id="${c.id}" ${c.sequential ? "checked" : ""} /> in order
-          </label>
-          <button class="ghost c-save" data-id="${c.id}">Save</button>
+            <span class="kind">${(lessons || []).filter(l => l.course_id === c.id).length} lessons${c.category ? " · " + esc(c.category) : ""}${c.sequential ? " · in order" : ""}${c.description ? " · " + esc(c.description) : ""}</span></div>
+          <button class="ghost c-edit" data-id="${c.id}">✏️ Edit</button>
+        </div>
+        <div class="c-editrow" data-id="${c.id}" style="display:none; padding:0.7rem 0 1rem; border-bottom:1px solid var(--line);">
+          <div class="form-row">
+            <div class="field"><label>Title</label><input class="ce-title" data-id="${c.id}" value="${esc(c.title)}" /></div>
+            <div class="field"><label>Description</label><input class="ce-desc" data-id="${c.id}" value="${esc(c.description || "")}" /></div>
+            <div class="field" style="max-width:140px;"><label>Category</label><input class="ce-cat" data-id="${c.id}" value="${esc(c.category || "")}" placeholder="Chinese / IELTS…" /></div>
+            <div class="field" style="max-width:90px;"><label>Color</label>
+              <input type="color" class="ce-color" data-id="${c.id}" value="${esc(c.color || "#1e4f8f")}" style="height:42px; padding:0.2rem;" /></div>
+            <div class="field" style="max-width:120px;"><label>Unlock</label>
+              <label style="font-size:0.85rem; color:var(--muted); cursor:pointer; display:block; padding:0.6rem 0;">
+                <input type="checkbox" class="ce-seq" data-id="${c.id}" ${c.sequential ? "checked" : ""} /> in order
+              </label></div>
+            <button class="ce-save" data-id="${c.id}">Save</button>
+            <button class="ghost ce-cancel" data-id="${c.id}">Cancel</button>
+          </div>
+          <p class="msg ce-msg" data-id="${c.id}"></p>
         </div>`).join("");
 
       const enrollmentRows = (enrollments || []).map(e => `
@@ -688,8 +705,24 @@
         </div>
 
         <div class="card">
-          <h2>Lessons (${(lessons || []).length})</h2>
-          ${lessonList || `<p class="empty">No lessons yet — add your first one above.</p>`}
+          <h2>Lessons <span id="l-count" class="kind"></span></h2>
+          <div class="form-row" style="margin-bottom:0.7rem;">
+            <div class="field" style="max-width:210px;"><label>Course</label>
+              <select id="lf-course">
+                <option value="all">All courses</option>
+                <option value="none">— no course —</option>
+                ${courseOptions}
+              </select></div>
+            <div class="field"><label>Search</label>
+              <input id="lf-q" placeholder="Filter by title or URL…" autocomplete="off" /></div>
+            <div class="field" style="max-width:160px;"><label>Sort by</label>
+              <select id="lf-sort">
+                <option value="order">Order number</option>
+                <option value="title">Title (A–Z)</option>
+                <option value="new">Newest first</option>
+              </select></div>
+          </div>
+          <div id="lesson-list"></div>
         </div>
         </div>
 
@@ -1037,24 +1070,47 @@
         const color = document.getElementById("c-color").value || null;
         const m = document.getElementById("c-msg");
         if (!title) { m.textContent = "Give the course a title."; m.className = "msg err"; return; }
+        if ((courses || []).some(c => c.title.trim().toLowerCase() === title.toLowerCase())) {
+          m.textContent = "A course with this name already exists."; m.className = "msg err"; return;
+        }
         const { error } = await sb.from("courses")
           .insert({ title, description, category, color, sort_order: (courses?.length || 0) + 1 });
         if (error) { m.textContent = "Could not add: " + error.message; m.className = "msg err"; return; }
         renderAdmin();
       });
 
-      app.querySelectorAll(".c-save").forEach(btn => {
+      app.querySelectorAll(".c-edit").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const row = app.querySelector(`.c-editrow[data-id="${btn.getAttribute("data-id")}"]`);
+          row.style.display = row.style.display === "none" ? "block" : "none";
+        });
+      });
+      app.querySelectorAll(".ce-cancel").forEach(btn => {
+        btn.addEventListener("click", () => {
+          app.querySelector(`.c-editrow[data-id="${btn.getAttribute("data-id")}"]`).style.display = "none";
+        });
+      });
+      app.querySelectorAll(".ce-save").forEach(btn => {
         btn.addEventListener("click", async () => {
           const id = btn.getAttribute("data-id");
-          const color = app.querySelector(`.c-color[data-id="${id}"]`).value || null;
-          const category = app.querySelector(`.c-cat[data-id="${id}"]`).value.trim() || null;
-          const sequential = app.querySelector(`.c-seq[data-id="${id}"]`).checked;
+          const m = app.querySelector(`.ce-msg[data-id="${id}"]`);
+          const title = app.querySelector(`.ce-title[data-id="${id}"]`).value.trim();
+          const description = app.querySelector(`.ce-desc[data-id="${id}"]`).value.trim() || null;
+          const category = app.querySelector(`.ce-cat[data-id="${id}"]`).value.trim() || null;
+          const color = app.querySelector(`.ce-color[data-id="${id}"]`).value || null;
+          const sequential = app.querySelector(`.ce-seq[data-id="${id}"]`).checked;
+          m.className = "msg";
+          if (!title) { m.textContent = "Course name can't be empty."; m.className = "msg err"; return; }
+          const dup = (courses || []).some(c =>
+            c.id !== id && c.title.trim().toLowerCase() === title.toLowerCase());
+          if (dup) { m.textContent = "A course with this name already exists."; m.className = "msg err"; return; }
           btn.disabled = true;
-          const { error } = await sb.from("courses").update({ color, category, sequential }).eq("id", id);
+          const { error } = await sb.from("courses")
+            .update({ title, description, category, color, sequential }).eq("id", id);
           btn.disabled = false;
-          if (error) { alert("Could not save: " + error.message); return; }
-          btn.textContent = "Saved ✓";
-          setTimeout(() => renderAdmin(), 600);
+          if (error) { m.textContent = "Could not save: " + error.message; m.className = "msg err"; return; }
+          m.textContent = "Course updated successfully ✓";
+          setTimeout(() => renderAdmin(), 700);
         });
       });
 
@@ -1083,52 +1139,93 @@
         });
       });
 
-      app.querySelectorAll(".l-save").forEach(btn => {
-        btn.addEventListener("click", async () => {
-          const id = btn.getAttribute("data-id");
-          const sel = app.querySelector(`.l-move[data-id="${id}"]`);
-          const lesson = (lessons || []).find(x => x.id === id);
-          btn.disabled = true;
+      // ---- filtered, searchable, sortable lesson list ----
+      let lf = { course: "all", sort: "order" };
+      try { lf = Object.assign(lf, JSON.parse(localStorage.getItem("hub_lfilter") || "{}")); } catch (e) {}
+      const lfCourse = document.getElementById("lf-course");
+      const lfQ = document.getElementById("lf-q");
+      const lfSort = document.getElementById("lf-sort");
+      lfCourse.value = lf.course;
+      if (lfCourse.value !== lf.course) { lf.course = "all"; lfCourse.value = "all"; }  // saved course was deleted
+      lfSort.value = lf.sort;
+      const saveLf = () => {
+        try { localStorage.setItem("hub_lfilter", JSON.stringify({ course: lf.course, sort: lf.sort })); } catch (e) {}
+      };
+      const normA = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-          let newPath = lesson?.storage_path || null;
-          // If this lesson is an uploaded file, move it to the new
-          // course's folder so student access follows the course.
-          if (lesson?.storage_path) {
-            const folder = sel.value || "shared";
-            const fname = lesson.storage_path.split("/").pop();
-            const target = folder + "/" + fname;
-            if (target !== lesson.storage_path) {
-              const { error: mvErr } = await sb.storage.from("materials")
-                .move(lesson.storage_path, target);
-              if (mvErr) { btn.disabled = false; alert("Could not move the file: " + mvErr.message); return; }
-              newPath = target;
+      function wireLessonRows(box) {
+        box.querySelectorAll(".l-save").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            const id = btn.getAttribute("data-id");
+            const sel = box.querySelector(`.l-move[data-id="${id}"]`);
+            const lesson = (lessons || []).find(x => x.id === id);
+            btn.disabled = true;
+
+            let newPath = lesson?.storage_path || null;
+            // If this lesson is an uploaded file, move it to the new
+            // course's folder so student access follows the course.
+            if (lesson?.storage_path) {
+              const folder = sel.value || "shared";
+              const fname = lesson.storage_path.split("/").pop();
+              const target = folder + "/" + fname;
+              if (target !== lesson.storage_path) {
+                const { error: mvErr } = await sb.storage.from("materials")
+                  .move(lesson.storage_path, target);
+                if (mvErr) { btn.disabled = false; alert("Could not move the file: " + mvErr.message); return; }
+                newPath = target;
+              }
             }
-          }
 
-          const est_minutes = parseInt(app.querySelector(`.l-min-edit[data-id="${id}"]`).value, 10) || null;
-          const { error } = await sb.from("lessons")
-            .update({ course_id: sel.value || null, storage_path: newPath, est_minutes }).eq("id", id);
-          btn.disabled = false;
-          if (error) { alert("Could not move the lesson: " + error.message); return; }
-          btn.textContent = "Saved ✓";
-          setTimeout(() => renderAdmin(), 600);
+            const est_minutes = parseInt(box.querySelector(`.l-min-edit[data-id="${id}"]`).value, 10) || null;
+            const { error } = await sb.from("lessons")
+              .update({ course_id: sel.value || null, storage_path: newPath, est_minutes }).eq("id", id);
+            btn.disabled = false;
+            if (error) { alert("Could not move the lesson: " + error.message); return; }
+            btn.textContent = "Saved ✓";
+            setTimeout(() => renderAdmin(), 600);
+          });
         });
-      });
 
-      app.querySelectorAll(".l-del").forEach(btn => {
-        btn.addEventListener("click", async () => {
-          if (!confirm("Delete this lesson? Its uploaded file (if any) and student progress records will also be removed. This cannot be undone.")) return;
-          const id = btn.getAttribute("data-id");
-          const lesson = (lessons || []).find(x => x.id === id);
-          btn.disabled = true;
-          const { error } = await sb.from("lessons").delete().eq("id", id);
-          if (error) { btn.disabled = false; alert("Could not delete: " + error.message); return; }
-          if (lesson?.storage_path) {
-            await sb.storage.from("materials").remove([lesson.storage_path]);
-          }
-          renderAdmin();
+        box.querySelectorAll(".l-del").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            if (!confirm("Delete this lesson? Its uploaded file (if any) and student progress records will also be removed. This cannot be undone.")) return;
+            const id = btn.getAttribute("data-id");
+            const lesson = (lessons || []).find(x => x.id === id);
+            btn.disabled = true;
+            const { error } = await sb.from("lessons").delete().eq("id", id);
+            if (error) { btn.disabled = false; alert("Could not delete: " + error.message); return; }
+            if (lesson?.storage_path) {
+              await sb.storage.from("materials").remove([lesson.storage_path]);
+            }
+            renderAdmin();
+          });
         });
-      });
+
+        wireFileButtons(box);
+      }
+
+      function renderLessonList() {
+        const box = document.getElementById("lesson-list");
+        const q = normA(lfQ.value.trim());
+        let list = (lessons || []).slice();
+        if (lf.course === "none") list = list.filter(l => !l.course_id);
+        else if (lf.course !== "all") list = list.filter(l => l.course_id === lf.course);
+        if (q) list = list.filter(l => normA(l.title).includes(q) || normA(l.url).includes(q));
+        if (lf.sort === "title") list.sort((a, b) => a.title.localeCompare(b.title));
+        else if (lf.sort === "new") list.sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
+        document.getElementById("l-count").textContent =
+          "(" + list.length + (list.length !== (lessons || []).length ? " of " + (lessons || []).length : "") + ")";
+        box.innerHTML = list.map(lessonRowHtml).join("") ||
+          `<p class="empty">${lf.course === "all" && !q
+            ? "No lessons yet — add your first one above."
+            : "No lessons have been assigned to this course yet."}</p>`;
+        wireLessonRows(box);
+      }
+
+      lfCourse.addEventListener("change", () => { lf.course = lfCourse.value; saveLf(); renderLessonList(); });
+      lfSort.addEventListener("change", () => { lf.sort = lfSort.value; saveLf(); renderLessonList(); });
+      lfQ.addEventListener("input", renderLessonList);
+      renderLessonList();
 
       wireFileButtons(app);
 
