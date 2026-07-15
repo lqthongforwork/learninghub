@@ -150,6 +150,10 @@
         : esc(String(name).charAt(0).toUpperCase());
 
       if (window.UI && UI.initBell) UI.initBell(document.getElementById("bell-slot"));
+      if (profile?.role !== "owner" && window.UI && UI.applyBrand) {
+        sb.from("organizations").select("brand_color").limit(1)
+          .then(({ data }) => { if (data && data[0] && data[0].brand_color) UI.applyBrand(data[0].brand_color); });
+      }
 
       if (profile?.role === "owner") renderAdmin();
       else if (profile?.role === "admin") { window.location.href = "admin.html"; return; }
@@ -184,6 +188,39 @@
         .from("sessions").select("*").order("starts_at", { ascending: true });
       const { data: myMats } = await sb
         .from("teacher_materials").select("*").order("created_at", { ascending: false });
+      const { data: mePlan } = await sb
+        .from("profiles").select("plan, premium_until").eq("id", user.id).single();
+
+      // ---- Free vs Premium gating ----
+      const __t0 = new Date().toISOString().slice(0, 10);
+      const isPremUser = mePlan?.plan === "premium" && (!mePlan.premium_until || mePlan.premium_until >= __t0);
+      const tierOf = l => l.tier || (courses || []).find(c => c.id === l.course_id)?.tier || "free";
+      const premLocked = new Set((lessons || []).filter(l => !isPremUser && tierOf(l) === "premium").map(l => l.id));
+      const logLock = lid => {
+        sb.from("lock_events").insert({ student_id: user.id, lesson_id: lid || null }).then(() => {});
+      };
+      const showUpgrade = () => {
+        const T = window.UI ? UI.t2 : (k => k);
+        const old = document.querySelector(".cert-overlay"); if (old) old.remove();
+        const plans = window.PREMIUM_PLANS || [];
+        const ov = document.createElement("div");
+        ov.className = "cert-overlay";
+        ov.innerHTML = `
+          <div class="modal" style="max-width:430px; text-align:center;">
+            <div style="font-size:2.4rem;">👑</div>
+            <h3 style="font-family:var(--serif); margin:0.3rem 0; font-size:1.3rem;">${T("upgrade_title")}</h3>
+            <p style="color:var(--muted); font-size:0.92rem;">${T("upgrade_body")}</p>
+            ${plans.map(p => `
+              <div class="lesson"><div class="meta" style="text-align:left;"><div class="title">${esc(p.name)}</div>${p.note ? `<span class="kind">${esc(p.note)}</span>` : ""}</div>
+                <span class="pill done">${esc(p.price)}</span></div>`).join("")}
+            <a class="btn" href="https://zalo.me/0961923983" target="_blank" rel="noopener"
+               style="text-decoration:none; display:inline-block; margin-top:0.8rem;">💬 ${T("contact_upgrade")}</a>
+            <div style="margin-top:0.7rem;"><button class="ghost" id="upg-close">${T("close")}</button></div>
+          </div>`;
+        document.body.appendChild(ov);
+        ov.addEventListener("click", e => { if (e.target === ov) ov.remove(); });
+        ov.querySelector("#upg-close").addEventListener("click", () => ov.remove());
+      };
 
       const done = new Set((mine || []).filter(p => p.status === "completed").map(p => p.lesson_id));
 
@@ -196,7 +233,9 @@
             <div class="title">${esc(l.title)}</div>
             <span class="kind">${esc(l.kind)}</span>
           </div>
-          ${l.storage_path
+          ${premLocked.has(l.id)
+            ? `<button class="ghost prem-btn" data-lesson="${l.id}">👑 Premium</button>`
+            : l.storage_path
             ? `<button class="ghost open-file" data-lesson="${l.id}" data-path="${esc(l.storage_path)}">${t("open")}</button>`
             : `<a class="btn ghost open-link" data-lesson="${l.id}" href="${esc(withLms(l))}" target="_blank" rel="noopener">${t("open")}</a>`}
           ${done.has(l.id)
@@ -259,6 +298,8 @@
             </div>`;
           const actions = isLocked
             ? `<span class="pill todo">🔒 ${t("locked")}</span>`
+            : premLocked.has(l.id)
+            ? `<button class="ghost prem-btn" data-lesson="${l.id}">👑 Premium</button>`
             : `${l.storage_path
                 ? `<button class="ghost open-file" data-lesson="${l.id}" data-path="${esc(l.storage_path)}">${t("open")}</button>`
                 : `<a class="btn ghost open-link" data-lesson="${l.id}" href="${esc(withLms(l))}" target="_blank" rel="noopener">${t("open")}</a>`}
@@ -269,8 +310,11 @@
         }).join("");
 
         return `
-          <div class="card" id="course-${c.id}" style="border-top:4px solid ${esc(color)};">
-            <h2>${esc(c.title)}
+          <div class="card course-card" id="course-${c.id}" style="border-top:4px solid ${esc(color)};">
+            ${c.banner_url
+              ? `<div class="course-banner" style="background-image:url('${esc(c.banner_url)}');"></div>`
+              : `<div class="course-banner" style="background:linear-gradient(120deg, ${esc(color)}, ${esc(color)}b3);">${esc(c.icon || "📚")}</div>`}
+            <h2>${c.icon ? esc(c.icon) + " " : ""}${esc(c.title)}
               <span class="kind" style="float:right;">${tf("done_count", { d: doneCount, t: ls.length })}</span></h2>
             <div class="progress"><span style="width:${pct}%; background:${esc(color)};"></span></div>
             ${badgeRow}
@@ -509,7 +553,7 @@
       const T2 = window.UI ? UI.t2 : (k => k);
       const todayStr = new Date().toISOString().slice(0, 10);
       const asgnCard = (myAsgns || []).length ? `
-        <div class="card" id="asgn-card" style="border-top:4px solid var(--accent);">
+        <div class="card" id="asgn-card" style="border-top:4px solid var(--tone-purple);">
           <h2>📝 ${T2("asgn")}</h2>
           ${(myAsgns || []).map(a => {
             const sub = (mySubs || []).find(s => s.assignment_id === a.id);
@@ -542,7 +586,7 @@
         </div>` : "";
 
       const discCard = (courses || []).length ? `
-        <div class="card" id="disc-card" style="border-top:4px solid var(--gold);">
+        <div class="card" id="disc-card" style="border-top:4px solid var(--tone-teal);">
           <h2>💬 ${T2("disc")}
             <select id="dc-course" style="float:right; width:auto; max-width:220px; font-size:0.85rem; padding:0.35rem 0.5rem;">
               ${(courses || []).map(c => `<option value="${c.id}">${esc(c.title)}</option>`).join("")}
@@ -554,7 +598,7 @@
       const upSess = (mySessions || []).filter(s =>
         new Date(s.starts_at).getTime() >= Date.now() - 3600e3).slice(0, 5);
       const schedCard = upSess.length ? `
-        <div class="card" style="border-top:4px solid var(--accent);">
+        <div class="card" style="border-top:4px solid var(--tone-cyan);">
           <h2>🗓️ ${T2c("upcoming")}</h2>
           ${upSess.map(s => `
             <div class="lesson">
@@ -572,7 +616,7 @@
 
       // teacher materials, grouped by course
       const matsCard = (myMats || []).length ? `
-        <div class="card" style="border-top:4px solid var(--gold);">
+        <div class="card" style="border-top:4px solid var(--tone-amber);">
           <h2>📎 ${T2c("materials_student")}</h2>
           ${(myMats || []).map(m => `
             <div class="lesson">
@@ -598,7 +642,7 @@
         .filter(([lid, rt]) => rt < 0.7 && findL(lid))
         .sort((a, b) => a[1] - b[1]).slice(0, 3);
       const reviewCard = reviewList.length ? `
-        <div class="card" style="border-top:4px solid var(--gold);">
+        <div class="card" style="border-top:4px solid var(--tone-rose);">
           <h2>💡 ${T2c("review_title")}</h2>
           <p class="kind" style="margin:0 0 0.4rem;">${T2c("review_hint")}</p>
           ${reviewList.map(([lid, rt]) => `
@@ -611,10 +655,21 @@
             </div>`).join("")}
         </div>` : "";
 
+      const T2p = window.UI ? UI.t2 : (k => k);
+      const anyPremiumContent = (lessons || []).some(l => tierOf(l) === "premium");
+      const premBar = isPremUser
+        ? `<p class="kind" style="margin:-0.4rem 0 0.9rem;">👑 ${T2p("premium_active")}${mePlan?.premium_until ? " → " + esc(mePlan.premium_until) : ""}</p>`
+        : (anyPremiumContent ? `
+          <div class="alert-bar" style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
+            <span style="flex:1;">👑 ${T2p("upgrade_hint")}</span>
+            <button id="upg-open" class="ghost" style="flex:none;">${T2p("upgrade")}</button>
+          </div>` : "");
+
       app.innerHTML = `
         <p class="eyebrow">${t("my_lessons")}</p>
         <h1>${t("welcome")}${me?.full_name ? ", " + esc(me.full_name) : ""}</h1>
         ${accessNote}
+        ${premBar}
         ${heroCard}
         ${schedCard}
         ${statsCard}
@@ -665,6 +720,13 @@
         if (error) { m.textContent = t("err_save") + error.message; m.className = "msg err"; return; }
         renderStudent();
       });
+
+      // --- premium locks + upgrade ---
+      app.querySelectorAll(".prem-btn").forEach(btn => btn.addEventListener("click", () => {
+        logLock(btn.getAttribute("data-lesson"));
+        showUpgrade();
+      }));
+      document.getElementById("upg-open")?.addEventListener("click", showUpgrade);
 
       // --- assignment submissions ---
       app.querySelectorAll(".as-submit").forEach(btn => btn.addEventListener("click", async () => {
@@ -872,6 +934,7 @@
       };
       const openLesson = l => {
         if (lockedSet.has(l.id)) { alert(t("locked_hint")); return; }
+        if (premLocked.has(l.id)) { logLock(l.id); showUpgrade(); return; }
         if (l.storage_path) logOpen(l.id);   // tracked pages log themselves
         sb.from("lesson_activity").upsert({
           student_id: user.id, lesson_id: l.id, kind: "activity",
@@ -979,7 +1042,7 @@
 
       const { data: students } = await sb
         .from("profiles")
-        .select("id, full_name, email, role, org_id, avatar_url, bio, multi_device, access_start, access_expires, suspended")
+        .select("id, full_name, email, role, org_id, avatar_url, bio, multi_device, access_start, access_expires, suspended, plan, premium_until")
         .order("created_at");
 
       const { data: courses } = await sb
@@ -1013,6 +1076,10 @@
         .select("student_id, lesson_id, kind, key, value, max_value, updated_at")
         .order("updated_at", { ascending: false });
 
+      const { data: lockEvents } = await sb
+        .from("lock_events").select("lesson_id, student_id, created_at")
+        .order("created_at", { ascending: false }).limit(2000);
+
       const courseName = id => (courses || []).find(c => c.id === id)?.title || null;
 
       // account status: active / expiring / expired / suspended (+unlimited)
@@ -1044,10 +1111,16 @@
             <div class="title">${esc(l.title)}</div>
             <span class="kind">#${l.sort_order ?? 0} · ${esc(l.kind)} · ${l.storage_path ? "uploaded file" : esc(l.url || "")}</span>
           </div>
+          ${(l.tier || cc?.tier) === "premium" ? `<span class="pill todo" style="flex:none;">👑</span>` : ""}
           ${badge}
           ${l.storage_path ? `<button class="ghost open-file" data-path="${esc(l.storage_path)}">Open</button>` : ""}
           <input type="number" class="l-min-edit" data-id="${l.id}" value="${l.est_minutes ?? ""}"
                  min="0" placeholder="min" title="Estimated minutes" style="max-width:70px; flex:none;" />
+          <select class="l-tier" data-id="${l.id}" style="max-width:105px;" title="Access tier">
+            <option value="" ${!l.tier ? "selected" : ""}>↳ course</option>
+            <option value="free" ${l.tier === "free" ? "selected" : ""}>Free</option>
+            <option value="premium" ${l.tier === "premium" ? "selected" : ""}>👑</option>
+          </select>
           <select class="l-move" data-id="${l.id}" style="max-width:150px;">
             <option value="">— no course —</option>
             ${(courses || []).map(c =>
@@ -1067,7 +1140,7 @@
       const courseList = (courses || []).map(c => `
         <div class="lesson">
           <span style="width:14px;height:14px;border-radius:50%;background:${esc(c.color || "#1e4f8f")};flex:none;"></span>
-          <div class="meta"><div class="title">${esc(c.title)}</div>
+          <div class="meta"><div class="title">${c.icon ? esc(c.icon) + " " : ""}${esc(c.title)}</div>
             <span class="kind">${(lessons || []).filter(l => l.course_id === c.id).length} lessons${c.category ? " · " + esc(c.category) : ""}${c.sequential ? " · in order" : ""}${c.description ? " · " + esc(c.description) : ""}</span></div>
           <button class="ghost c-edit" data-id="${c.id}">✏️ Edit</button>
         </div>
@@ -1078,6 +1151,15 @@
             <div class="field" style="max-width:140px;"><label>Category</label><input class="ce-cat" data-id="${c.id}" value="${esc(c.category || "")}" placeholder="Chinese / IELTS…" /></div>
             <div class="field" style="max-width:90px;"><label>Color</label>
               <input type="color" class="ce-color" data-id="${c.id}" value="${esc(c.color || "#1e4f8f")}" style="height:42px; padding:0.2rem;" /></div>
+            <div class="field" style="max-width:100px;"><label>Icon</label>
+              <input class="ce-icon" data-id="${c.id}" value="${esc(c.icon || "")}" maxlength="4" placeholder="🀄" /></div>
+            <div class="field" style="max-width:135px;"><label>Access</label>
+              <select class="ce-tier" data-id="${c.id}">
+                <option value="free" ${c.tier !== "premium" ? "selected" : ""}>Free</option>
+                <option value="premium" ${c.tier === "premium" ? "selected" : ""}>👑 Premium</option>
+              </select></div>
+            <div class="field" style="max-width:210px;"><label>Banner</label>
+              <input type="file" class="ce-banner" data-id="${c.id}" accept="image/*" style="padding:0.42rem;" /></div>
             <div class="field" style="max-width:120px;"><label>Unlock</label>
               <label style="font-size:0.85rem; color:var(--muted); cursor:pointer; display:block; padding:0.6rem 0;">
                 <input type="checkbox" class="ce-seq" data-id="${c.id}" ${c.sequential ? "checked" : ""} /> in order
@@ -1133,6 +1215,15 @@
               <input id="c-color" type="color" value="#1e4f8f" style="height:42px; padding:0.2rem;" />
               <div class="swatches" id="c-swatches"></div>
             </div>
+            <div class="field" style="max-width:110px;"><label>Icon (emoji)</label>
+              <input id="c-icon" placeholder="🀄" maxlength="4" /></div>
+            <div class="field" style="max-width:140px;"><label>Access</label>
+              <select id="c-tier">
+                <option value="free">Free</option>
+                <option value="premium">👑 Premium</option>
+              </select></div>
+            <div class="field" style="max-width:220px;"><label>Banner image (optional)</label>
+              <input type="file" id="c-banner" accept="image/*" style="padding:0.42rem;" /></div>
             <button id="c-add">Add course</button>
           </div>
           <p id="c-msg" class="msg"></p>
@@ -1203,6 +1294,12 @@
               <input id="l-order" type="number" value="${(lessons?.length || 0) + 1}" min="0" /></div>
             <div class="field" style="max-width:90px;"><label>Minutes</label>
               <input id="l-min" type="number" min="0" placeholder="—" /></div>
+            <div class="field" style="max-width:130px;"><label>Access</label>
+              <select id="l-tier">
+                <option value="">↳ course</option>
+                <option value="free">Free</option>
+                <option value="premium">👑 Premium</option>
+              </select></div>
             <div class="field"><label>Link (URL)</label><input id="l-url" placeholder="https://your-site.github.io/lesson1.html" /></div>
             <button id="l-add">Add</button>
           </div>
@@ -1711,8 +1808,9 @@
           if (upErr) { m.textContent = "Upload failed: " + upErr.message; m.className = "msg err"; return; }
         }
 
+        const tierV = document.getElementById("l-tier").value || null;
         const { error } = await sb.from("lessons")
-          .insert({ title, kind, url: url || null, sort_order, course_id, storage_path, est_minutes });
+          .insert({ title, kind, url: url || null, sort_order, course_id, storage_path, est_minutes, tier: tierV });
         if (error) { m.textContent = "Could not add: " + error.message; m.className = "msg err"; return; }
         renderAdmin();
       });
@@ -1735,9 +1833,26 @@
         if ((courses || []).some(c => c.title.trim().toLowerCase() === title.toLowerCase())) {
           m.textContent = "A course with this name already exists."; m.className = "msg err"; return;
         }
-        const { error } = await sb.from("courses")
-          .insert({ title, description, category, color, sort_order: (courses?.length || 0) + 1 });
+        const iconV = document.getElementById("c-icon").value.trim() || null;
+        const bannerFile = document.getElementById("c-banner").files[0] || null;
+        const { data: newCourse, error } = await sb.from("courses")
+          .insert({ title, description, category, color, icon: iconV,
+                    tier: document.getElementById("c-tier").value,
+                    sort_order: (courses?.length || 0) + 1 }).select().single();
         if (error) { m.textContent = "Could not add: " + error.message; m.className = "msg err"; return; }
+        if (bannerFile && window.UI && UI.resizeImage) {
+          try {
+            m.textContent = "Uploading banner…";
+            const blob = await UI.resizeImage(bannerFile, 1200);
+            const path = newCourse.id + "-" + Date.now() + ".jpg";
+            const { error: upErr } = await sb.storage.from("banners")
+              .upload(path, blob, { contentType: "image/jpeg", upsert: true });
+            if (!upErr) {
+              const { data: pub } = sb.storage.from("banners").getPublicUrl(path);
+              await sb.from("courses").update({ banner_url: pub.publicUrl }).eq("id", newCourse.id);
+            }
+          } catch (e) { /* banner is optional */ }
+        }
         renderAdmin();
       });
 
@@ -1761,14 +1876,28 @@
           const category = app.querySelector(`.ce-cat[data-id="${id}"]`).value.trim() || null;
           const color = app.querySelector(`.ce-color[data-id="${id}"]`).value || null;
           const sequential = app.querySelector(`.ce-seq[data-id="${id}"]`).checked;
+          const iconV = app.querySelector(`.ce-icon[data-id="${id}"]`).value.trim() || null;
+          const tierV = app.querySelector(`.ce-tier[data-id="${id}"]`).value;
+          const bFile = app.querySelector(`.ce-banner[data-id="${id}"]`).files[0] || null;
           m.className = "msg";
           if (!title) { m.textContent = "Course name can't be empty."; m.className = "msg err"; return; }
           const dup = (courses || []).some(c =>
             c.id !== id && c.title.trim().toLowerCase() === title.toLowerCase());
           if (dup) { m.textContent = "A course with this name already exists."; m.className = "msg err"; return; }
           btn.disabled = true;
-          const { error } = await sb.from("courses")
-            .update({ title, description, category, color, sequential }).eq("id", id);
+          let banner_url;
+          if (bFile && window.UI && UI.resizeImage) {
+            try {
+              const blob = await UI.resizeImage(bFile, 1200);
+              const path = id + "-" + Date.now() + ".jpg";
+              const { error: upErr } = await sb.storage.from("banners")
+                .upload(path, blob, { contentType: "image/jpeg", upsert: true });
+              if (!upErr) banner_url = sb.storage.from("banners").getPublicUrl(path).data.publicUrl;
+            } catch (e) {}
+          }
+          const coursePatch = { title, description, category, color, sequential, icon: iconV, tier: tierV };
+          if (banner_url) coursePatch.banner_url = banner_url;
+          const { error } = await sb.from("courses").update(coursePatch).eq("id", id);
           btn.disabled = false;
           if (error) { m.textContent = "Could not save: " + error.message; m.className = "msg err"; return; }
           m.textContent = "Course updated successfully ✓";
@@ -1876,8 +2005,10 @@
             }
 
             const est_minutes = parseInt(box.querySelector(`.l-min-edit[data-id="${id}"]`).value, 10) || null;
+            const tierSel = box.querySelector(`.l-tier[data-id="${id}"]`);
             const { error } = await sb.from("lessons")
-              .update({ course_id: sel.value || null, storage_path: newPath, est_minutes }).eq("id", id);
+              .update({ course_id: sel.value || null, storage_path: newPath, est_minutes,
+                        tier: tierSel ? (tierSel.value || null) : null }).eq("id", id);
             btn.disabled = false;
             if (error) { alert("Could not move the lesson: " + error.message); return; }
             btn.textContent = "Saved ✓";
@@ -2039,7 +2170,18 @@
           stat("Learning hours", (totalSecs / 3600).toFixed(1) + "h",
                engEntries.length ? "avg " + fmtTime(totalSecs / engEntries.length) + " per lesson" : "") +
           stat("Avg quiz score", allScores.length ? Math.round(avgOf(allScores) * 100) + "%" : "—",
-               totalActs + " activities completed");
+               totalActs + " activities completed") +
+          (function () {
+            const freeN = onlyStudents.filter(s => s.plan !== "premium").length;
+            const premN = onlyStudents.filter(s => s.plan === "premium").length;
+            const rate = (freeN + premN) ? Math.round(premN / (freeN + premN) * 100) : 0;
+            const lockBy = {};
+            (lockEvents || []).forEach(ev => { if (ev.lesson_id) lockBy[ev.lesson_id] = (lockBy[ev.lesson_id] || 0) + 1; });
+            const topLock = Object.entries(lockBy).sort((a, b) => b[1] - a[1])[0];
+            return stat("👑 Premium students", premN, freeN + " free · " + rate + "% upgraded") +
+                   stat("Locked-lesson attempts", (lockEvents || []).length,
+                        topLock ? "top: " + esc(lById(topLock[0])?.title || "?") + " (" + topLock[1] + "×)" : "no attempts yet");
+          })();
       })();
 
       // ---- filters (persisted) ----
@@ -2342,6 +2484,13 @@
                     ${s.suspended ? "▶ Reactivate" : "⏸ Suspend"}</button>
                 </div>
                 <div class="form-row" style="margin-top:0.4rem;">
+                  <span class="kind" style="align-self:center;">👑 ${s.plan === "premium" ? "Premium" + (s.premium_until ? " → " + esc(s.premium_until) : " · ∞") : "Free"}:</span>
+                  ${[30, 90, 365].map(d =>
+                    `<button class="ghost pm-ext" data-id="${s.id}" data-d="${d}">👑 +${d}d</button>`).join("")}
+                  <button class="ghost pm-unlim" data-id="${s.id}">👑 ∞</button>
+                  <button class="ghost pm-free" data-id="${s.id}">→ Free</button>
+                </div>
+                <div class="form-row" style="margin-top:0.4rem;">
                   <div class="field" style="max-width:160px;"><label>Start</label>
                     <input type="date" class="st-d1" data-id="${s.id}" value="${esc(s.access_start || "")}" /></div>
                   <div class="field" style="max-width:160px;"><label>Expires</label>
@@ -2437,6 +2586,21 @@
           updStudent(id, {
             access_start: today, access_expires: addDaysStr(today, days), suspended: false
           }, msgOf(id), "Renewed for " + days + " days from today ✓");
+        }));
+        box.querySelectorAll(".pm-ext").forEach(btn => btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-id"), d = parseInt(btn.getAttribute("data-d"), 10);
+          const st = (students || []).find(x => x.id === id);
+          const today = dstr(new Date());
+          const base = (st.plan === "premium" && st.premium_until && st.premium_until >= today) ? st.premium_until : null;
+          updStudent(id, { plan: "premium", premium_until: addDaysStr(base, d) }, msgOf(id), "Premium extended ✓");
+        }));
+        box.querySelectorAll(".pm-unlim").forEach(btn => btn.addEventListener("click", () => {
+          updStudent(btn.getAttribute("data-id"), { plan: "premium", premium_until: null },
+            msgOf(btn.getAttribute("data-id")), "Premium (no end date) ✓");
+        }));
+        box.querySelectorAll(".pm-free").forEach(btn => btn.addEventListener("click", () => {
+          updStudent(btn.getAttribute("data-id"), { plan: "free", premium_until: null },
+            msgOf(btn.getAttribute("data-id")), "Set to Free ✓");
         }));
       }
 

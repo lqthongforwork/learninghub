@@ -86,7 +86,7 @@
         sb.from("courses").select("id, title, color").order("sort_order"),
         sb.from("lessons").select("id, title, course_id"),
         sb.from("profiles")
-          .select("id, full_name, email, role, access_start, access_expires, suspended")
+          .select("id, full_name, email, role, access_start, access_expires, suspended, plan, premium_until")
           .order("created_at"),
         sb.from("teacher_courses").select("teacher_id, course_id"),
         sb.from("enrollments").select("id, student_id, course_id, teacher_id, created_at"),
@@ -220,6 +220,19 @@
                 </div>
               </div>`).join("") || `<p class="empty">${t2("no_licenses")}</p>`}
           </div>
+
+          <div class="card">
+            <div class="card-head"><h2>${icon("palette", 18)} ${t2("branding")}</h2></div>
+            <p class="kind" style="margin:0 0 0.4rem;">${t2("brand_hint")}</p>
+            <div class="brand-swatches">${window.UI.BRAND_PRESETS.map(c =>
+              `<button data-c="${c}" class="${(org?.brand_color || "") === c ? "on" : ""}" style="background:${c};" title="${c}"></button>`).join("")}</div>
+            <div class="form-row">
+              <div class="field" style="max-width:110px;"><label>&nbsp;</label>
+                <input type="color" id="br-color" value="${esc(org?.brand_color || "#1e4f8f")}" style="height:42px; padding:0.2rem;" /></div>
+              <button id="br-save">${t2("save")}</button>
+              <button class="ghost" id="br-reset">${t2("reset_default")}</button>
+            </div>
+          </div>
         </div>
 
         <div class="tabpane" data-tab="people">
@@ -291,7 +304,7 @@
               <tbody>${students.map(s => `
                 <tr>
                   <td data-th="${t2("student")}">${esc(nameOf(s))}<div class="kind">${esc(s.email || "")}</div></td>
-                  <td data-th="${t2("access")}">${accPill(s)}</td>
+                  <td data-th="${t2("access")}">${accPill(s)}${s.plan === "premium" ? ` <span class="pill done">👑${s.premium_until ? " → " + esc(s.premium_until) : ""}</span>` : ""}</td>
                   <td data-th="${t2("completed")}">${doneBy[s.id] || 0}</td>
                   <td data-th="${t2("study_time")}">${fmtTime(timeBy[s.id] || 0)}</td>
                   <td data-th="${t2("last_active")}">${lastBy[s.id] ? new Date(lastBy[s.id]).toLocaleDateString() : t2("never")}</td>
@@ -302,6 +315,7 @@
                     <button class="ghost st-susp" data-id="${s.id}"
                       ${s.suspended ? "" : 'style="color:var(--danger); border-color:var(--danger);"'}>
                       ${s.suspended ? t2("reactivate") : t2("suspend")}</button>
+                    <button class="ghost pm-tgl" data-id="${s.id}" data-p="${s.plan === "premium" ? "free" : "premium"}">${s.plan === "premium" ? "→ " + t2("free_plan") : "👑"}</button>
                     <button class="ghost u-reset" data-id="${s.id}" data-name="${esc(nameOf(s))}">${icon("key-round")}</button>
                     <button class="ghost u-del" data-id="${s.id}" data-name="${esc(nameOf(s))}"
                             style="color:var(--danger); border-color:var(--danger);">${icon("trash-2")}</button>
@@ -522,6 +536,12 @@
         patchStudent(id, { suspended: !s.suspended }, t2("saved_ok"));
       }));
 
+      // ---- premium plan toggle ----
+      app.querySelectorAll(".pm-tgl").forEach(btn => btn.addEventListener("click", () => {
+        patchStudent(btn.getAttribute("data-id"),
+          { plan: btn.getAttribute("data-p"), premium_until: null }, t2("saved_ok"));
+      }));
+
       // ---- reset password / delete user ----
       app.querySelectorAll(".u-reset").forEach(btn => btn.addEventListener("click", async () => {
         const pw = await promptDialog({ title: t2("reset_pw") + " — " + btn.getAttribute("data-name"),
@@ -579,6 +599,25 @@
           teacher: nameOf(pById(e.teacher_id)),
           enrolled: e.created_at ? new Date(e.created_at).toLocaleDateString() : ""
         }))));
+
+      // ---- branding ----
+      if (org?.brand_color) window.UI.applyBrand(org.brand_color);
+      app.querySelectorAll(".brand-swatches button").forEach(b => b.addEventListener("click", () => {
+        document.getElementById("br-color").value = b.getAttribute("data-c");
+      }));
+      document.getElementById("br-save").addEventListener("click", async () => {
+        const brand_color = document.getElementById("br-color").value;
+        const { error } = await sb.from("organizations").update({ brand_color }).eq("id", myOrg);
+        if (error) { toast(t2("err_save") + error.message, "err"); return; }
+        window.UI.applyBrand(brand_color);
+        toast(t2("brand_saved"));
+      });
+      document.getElementById("br-reset").addEventListener("click", async () => {
+        const { error } = await sb.from("organizations").update({ brand_color: null }).eq("id", myOrg);
+        if (error) { toast(t2("err_save") + error.message, "err"); return; }
+        toast(t2("brand_saved"));
+        setTimeout(() => location.reload(), 700);
+      });
 
       // ---- printable report card ----
       function renderReportCard(sid) {

@@ -149,6 +149,16 @@
       review_title: "Suggested review",
       review_hint: "Lessons where your best quiz score is below 70% — a quick review will help.",
       review_go: "Review",
+      premium: "Premium", free_plan: "Free", plan: "Plan",
+      upgrade: "Upgrade", upgrade_title: "Upgrade to Premium",
+      upgrade_body: "Unlock every Premium lesson, complete course roadmaps, and all future premium content.",
+      upgrade_hint: "Some lessons are Premium — upgrade to unlock everything.",
+      contact_upgrade: "Contact your teacher to upgrade",
+      premium_active: "Premium active",
+      branding: "Organization branding",
+      brand_hint: "Pick your organization's color — it is applied to buttons, tabs, and highlights on all your pages (teachers and students included).",
+      brand_saved: "Branding saved ✓",
+      reset_default: "Reset to default",
       lang_btn: "VI",
     },
     vi: {
@@ -287,6 +297,16 @@
       review_title: "Gợi ý ôn tập",
       review_hint: "Các bài học có điểm quiz cao nhất dưới 70% — nên ôn lại nhé.",
       review_go: "Ôn lại",
+      premium: "Premium", free_plan: "Miễn phí", plan: "Gói",
+      upgrade: "Nâng cấp", upgrade_title: "Nâng cấp lên Premium",
+      upgrade_body: "Mở khóa toàn bộ bài học Premium, lộ trình đầy đủ của các khóa học và mọi nội dung nâng cao trong tương lai.",
+      upgrade_hint: "Một số bài học thuộc gói Premium — nâng cấp để mở khóa tất cả.",
+      contact_upgrade: "Liên hệ giáo viên để nâng cấp",
+      premium_active: "Đang dùng gói Premium",
+      branding: "Màu thương hiệu tổ chức",
+      brand_hint: "Chọn màu của tổ chức — màu này áp dụng cho nút bấm, thẻ và điểm nhấn trên mọi trang của bạn (kể cả giáo viên và học viên).",
+      brand_saved: "Đã lưu màu thương hiệu ✓",
+      reset_default: "Khôi phục mặc định",
       lang_btn: "EN",
     }
   };
@@ -477,7 +497,45 @@
     } catch (e) { /* bell is optional — never break the page */ }
   }
 
+  // ---------- organization brand color ----------
+  // Curated presets: all dark enough for white text (accessibility).
+  const BRAND_PRESETS = ["#1e4f8f", "#0e7c66", "#6d28d9", "#b3261e",
+                         "#0f766e", "#334155", "#7f1d1d", "#0369a1"];
+
+  function applyBrand(hex) {
+    if (!/^#[0-9a-fA-F]{6}$/.test(hex || "")) return;
+    const root = document.documentElement;
+    root.style.setProperty("--accent", hex);
+    const n = parseInt(hex.slice(1), 16);
+    const dk = c => Math.max(0, Math.round(c * 0.72));
+    root.style.setProperty("--accent-ink",
+      "#" + [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+        .map(c => dk(c).toString(16).padStart(2, "0")).join(""));
+  }
+
+  // ---------- client-side image downscale (banner uploads) ----------
+  function resizeImage(file, maxW) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const scale = Math.min(1, (maxW || 1200) / img.width);
+          const cv = document.createElement("canvas");
+          cv.width = Math.max(1, Math.round(img.width * scale));
+          cv.height = Math.max(1, Math.round(img.height * scale));
+          cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+          cv.toBlob(b => b ? resolve(b) : reject(new Error("resize failed")),
+                    "image/jpeg", 0.85);
+        } catch (e) { reject(e); }
+        URL.revokeObjectURL(img.src);
+      };
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
   window.UI = { t2, LANG, toast, confirmDialog, promptDialog, skeleton,
-                csv, icon, refreshIcons, wireLangButton, rerender, initBell };
+                csv, icon, refreshIcons, wireLangButton, rerender, initBell,
+                applyBrand, resizeImage, BRAND_PRESETS };
   document.documentElement.setAttribute("lang", LANG);
 })();

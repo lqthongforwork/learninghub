@@ -81,12 +81,13 @@
              { data: students }, { data: prog }, { data: activity },
              { data: licenses }, { data: anns },
              { data: asgns }, { data: subs },
-             { data: sess }, { data: mats }] = await Promise.all([
+             { data: sess }, { data: mats },
+             { data: orgRow }] = await Promise.all([
         sb.from("courses").select("*").order("sort_order").order("created_at"),
         sb.from("lessons").select("id, title, course_id, kind").order("sort_order"),
         sb.from("enrollments").select("id, student_id, course_id, created_at")
           .eq("teacher_id", user.id).order("created_at"),
-        sb.from("profiles").select("id, full_name, email, avatar_url, access_expires, suspended")
+        sb.from("profiles").select("id, full_name, email, avatar_url, access_expires, suspended, plan, premium_until")
           .eq("role", "student").order("created_at"),
         sb.from("progress").select("student_id, lesson_id, status, updated_at"),
         sb.from("lesson_activity").select("student_id, lesson_id, kind, key, value, max_value, updated_at"),
@@ -99,8 +100,11 @@
         sb.from("sessions").select("*").eq("teacher_id", user.id)
           .order("starts_at", { ascending: true }),
         sb.from("teacher_materials").select("*").eq("teacher_id", user.id)
-          .order("created_at", { ascending: false })
+          .order("created_at", { ascending: false }),
+        sb.from("organizations").select("brand_color").limit(1)
       ]);
+
+      if (orgRow?.[0]?.brand_color) window.UI.applyBrand(orgRow[0].brand_color);
 
       const cTitle = id => (courses || []).find(c => c.id === id)?.title || "—";
       const sById = id => (students || []).find(s => s.id === id);
@@ -160,7 +164,7 @@
         <div class="lesson">
           <span style="width:14px;height:14px;border-radius:50%;background:${esc(c.color || "#1e4f8f")};flex:none;"></span>
           <div class="meta">
-            <div class="title">${esc(c.title)}</div>
+            <div class="title">${c.icon ? esc(c.icon) + " " : ""}${esc(c.title)}</div>
             <span class="kind">${(lessons || []).filter(l => l.course_id === c.id).length} ${t2("lessons")} ·
               ${seatUse(c.id)}${lic?.seats ? " / " + lic.seats : ""} ${t2("students").toLowerCase()}${
               lic?.expires_on ? " · " + t2("license_until") + " " + esc(lic.expires_on) : ""}</span>
@@ -332,12 +336,13 @@
                 <th>${t2("study_time")}</th><th>${t2("last_active")}</th><th>${t2("actions")}</th></tr></thead>
               <tbody>${myStudents.map(s => `
                 <tr>
-                  <td data-th="${t2("student")}">${esc(nameOf(s))}${s.suspended ? ` <span class="pill off">${t2("suspended")}</span>` : ""}</td>
+                  <td data-th="${t2("student")}">${esc(nameOf(s))}${s.plan === "premium" ? ` <span class="pill done">👑${s.premium_until ? " → " + esc(s.premium_until) : ""}</span>` : ` <span class="pill off">${t2("free_plan")}</span>`}${s.suspended ? ` <span class="pill off">${t2("suspended")}</span>` : ""}</td>
                   <td data-th="${t2("email")}">${esc(s.email || "—")}</td>
                   <td data-th="${t2("completed")}">${doneBy[s.id] || 0} ${t2("lessons")}</td>
                   <td data-th="${t2("study_time")}">${fmtTime(timeBy[s.id] || 0)}</td>
                   <td data-th="${t2("last_active")}">${lastBy[s.id] ? new Date(lastBy[s.id]).toLocaleDateString() : t2("never")}</td>
                   <td style="white-space:nowrap;">
+                    <button class="ghost pm-tgl" data-id="${s.id}" data-p="${s.plan === "premium" ? "free" : "premium"}">${s.plan === "premium" ? "→ " + t2("free_plan") : "👑 " + t2("premium")}</button>
                     <button class="ghost sd-open" data-id="${s.id}">▸ ${t2("detail")}</button>
                     <button class="ghost st-reset" data-id="${s.id}" data-name="${esc(nameOf(s))}">${icon("key-round")} ${t2("reset_pw")}</button>
                   </td>
@@ -756,6 +761,16 @@
         if (error) { toast(t2("err_delete") + error.message, "err"); return; }
         if (m.storage_path) await sb.storage.from("teacher-materials").remove([m.storage_path]);
         toast(t2("deleted_ok"));
+        rerender(render);
+      }));
+
+      // ---- premium plan toggle ----
+      app.querySelectorAll(".pm-tgl").forEach(btn => btn.addEventListener("click", async () => {
+        const { error } = await sb.from("profiles").update({
+          plan: btn.getAttribute("data-p"), premium_until: null
+        }).eq("id", btn.getAttribute("data-id"));
+        if (error) { toast(t2("err_save") + error.message, "err"); return; }
+        toast(t2("saved_ok"));
         rerender(render);
       }));
 
