@@ -66,6 +66,13 @@
         .select("role").eq("id", user.id).single();
       if (me?.role !== "owner") { window.location.href = "dashboard.html"; return; }
       window.UI.initBell(document.getElementById("bell-slot"));
+      window.UI.initNav({
+        items: [
+          { href: "dashboard.html", label: t2("dashboard"), icon: "layout-dashboard" },
+          { id: "orgs", label: t2("organizations"), icon: "building-2" },
+        ],
+        active: "orgs",
+      });
       render();
     }
 

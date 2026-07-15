@@ -149,6 +149,7 @@
       review_title: "Suggested review",
       review_hint: "Lessons where your best quiz score is below 70% — a quick review will help.",
       review_go: "Review",
+      nav_home: "Home", profile_tab: "Profile", menu: "Menu",
       premium: "Premium", free_plan: "Free", plan: "Plan",
       upgrade: "Upgrade", upgrade_title: "Upgrade to Premium",
       upgrade_body: "Unlock every Premium lesson, complete course roadmaps, and all future premium content.",
@@ -297,6 +298,7 @@
       review_title: "Gợi ý ôn tập",
       review_hint: "Các bài học có điểm quiz cao nhất dưới 70% — nên ôn lại nhé.",
       review_go: "Ôn lại",
+      nav_home: "Trang chủ", profile_tab: "Hồ sơ", menu: "Menu",
       premium: "Premium", free_plan: "Miễn phí", plan: "Gói",
       upgrade: "Nâng cấp", upgrade_title: "Nâng cấp lên Premium",
       upgrade_body: "Mở khóa toàn bộ bài học Premium, lộ trình đầy đủ của các khóa học và mọi nội dung nâng cao trong tương lai.",
@@ -534,8 +536,49 @@
     });
   }
 
+  // ---------- sticky navigation bar (below the header) ----------
+  // opts: { items: [{id|href, label, icon}], active, onSelect(id),
+  //         actions: [{label, icon, onClick}] }
+  function initNav(opts) {
+    let nav = document.getElementById("subnav");
+    if (!nav) {
+      nav = document.createElement("nav");
+      nav.id = "subnav";
+      const header = document.querySelector("header.topbar");
+      if (!header) return;
+      header.insertAdjacentElement("afterend", nav);
+    }
+    const one = i => i.href
+      ? `<a class="sn-item" href="${i.href}">${icon(i.icon)}<span>${i.label}</span></a>`
+      : `<button class="sn-item ${opts.active === i.id ? "on" : ""}" data-id="${i.id}">${icon(i.icon)}<span>${i.label}</span></button>`;
+    nav.innerHTML = `
+      <button class="sn-burger" aria-expanded="false">☰ <span>${t2("menu")}</span></button>
+      <div class="sn-items">
+        ${opts.items.map(one).join("")}
+        ${(opts.actions && opts.actions.length)
+          ? `<span class="sn-spacer"></span>` + opts.actions.map((a, ix) =>
+              `<button class="sn-item sn-action" data-act="${ix}">${icon(a.icon)}<span>${a.label}</span></button>`).join("")
+          : ""}
+      </div>`;
+    const burger = nav.querySelector(".sn-burger");
+    burger.addEventListener("click", () => {
+      const open = nav.classList.toggle("open");
+      burger.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    nav.querySelectorAll(".sn-item[data-id]").forEach(b => b.addEventListener("click", () => {
+      nav.classList.remove("open");
+      if (opts.onSelect) opts.onSelect(b.getAttribute("data-id"));
+    }));
+    nav.querySelectorAll(".sn-action").forEach(b => b.addEventListener("click", () => {
+      nav.classList.remove("open");
+      const a = opts.actions[Number(b.getAttribute("data-act"))];
+      if (a && a.onClick) a.onClick();
+    }));
+    refreshIcons();
+  }
+
   window.UI = { t2, LANG, toast, confirmDialog, promptDialog, skeleton,
                 csv, icon, refreshIcons, wireLangButton, rerender, initBell,
-                applyBrand, resizeImage, BRAND_PRESETS };
+                applyBrand, resizeImage, BRAND_PRESETS, initNav };
   document.documentElement.setAttribute("lang", LANG);
 })();

@@ -30,6 +30,7 @@
     const who = document.getElementById("who");
     let user = null, myOrg = null;
     let tab = localStorage.getItem("hub_admin_tab") || "overview";
+    if (tab === "people") tab = "teachers";
 
     document.getElementById("signout").textContent = t2("sign_out");
     document.getElementById("signout").addEventListener("click", async () => {
@@ -194,11 +195,6 @@
         <p class="eyebrow">${t2("org_admin")}</p>
         <h1>${esc(org?.name || "—")}</h1>
 
-        <div class="tabs">
-          ${tabs.map(([k, label]) =>
-            `<button data-tab="${k}" class="${tab === k ? "active" : ""}">${label}</button>`).join("")}
-        </div>
-
         <div class="tabpane" data-tab="overview">
           ${attention}
           <div class="stat-grid">
@@ -235,7 +231,7 @@
           </div>
         </div>
 
-        <div class="tabpane" data-tab="people">
+        <div class="tabpane" data-tab="teachers">
           <div class="card">
             <div class="card-head"><h2>${icon("user-plus", 18)} ${t2("create_account")}</h2></div>
             <div class="form-row">
@@ -292,6 +288,9 @@
             </table>` : `<p class="empty" style="margin-top:0.75rem;">${t2("no_assignments")}</p>`}
           </div>
 
+        </div>
+
+        <div class="tabpane" data-tab="students">
           <div class="card">
             <div class="card-head">
               <h2>${icon("users", 18)} ${t2("students_access")}</h2>
@@ -430,11 +429,30 @@
         try { localStorage.setItem("hub_admin_tab", k); } catch (e) {}
         app.querySelectorAll(".tabpane").forEach(p =>
           p.classList.toggle("show", p.getAttribute("data-tab") === k));
-        app.querySelectorAll(".tabs button").forEach(b =>
-          b.classList.toggle("active", b.getAttribute("data-tab") === k));
+        document.querySelectorAll("#subnav .sn-item[data-id]").forEach(b =>
+          b.classList.toggle("on", b.getAttribute("data-id") === k));
+        const lbl = document.querySelector(`#subnav .sn-item[data-id="${k}"] span`);
+        const eb = app.querySelector(".eyebrow");
+        if (eb && lbl) eb.textContent = t2("org_admin") + " / " + lbl.textContent;
       }
-      app.querySelectorAll(".tabs button").forEach(b =>
-        b.addEventListener("click", () => showTab(b.getAttribute("data-tab"))));
+      window.UI.initNav({
+        items: [
+          { id: "overview", label: t2("overview"), icon: "layout-dashboard" },
+          { id: "teachers", label: t2("teachers"), icon: "graduation-cap" },
+          { id: "students", label: t2("students"), icon: "users" },
+          { id: "enroll", label: t2("enrollments"), icon: "book-plus" },
+          { id: "reports", label: t2("reports"), icon: "file-text" },
+          { id: "announce", label: t2("announcements"), icon: "megaphone" },
+        ],
+        active: tab,
+        onSelect: showTab,
+        actions: [
+          { label: t2("create_account"), icon: "user-plus",
+            onClick: () => { showTab("teachers"); document.getElementById("nu-email")?.focus(); } },
+          { label: t2("enroll"), icon: "plus",
+            onClick: () => { showTab("enroll"); document.getElementById("en-student")?.focus(); } },
+        ]
+      });
       showTab(tab);
 
       // ---- create account ----

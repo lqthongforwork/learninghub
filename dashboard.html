@@ -23,6 +23,7 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="lang.js"></script>
   <script src="config.js"></script>
   <script src="ui.js"></script>
@@ -670,23 +671,33 @@
         <h1>${t("welcome")}${me?.full_name ? ", " + esc(me.full_name) : ""}</h1>
         ${accessNote}
         ${premBar}
-        ${heroCard}
-        ${schedCard}
-        ${statsCard}
-        <div class="search-wrap">
-          <input id="hub-search" placeholder="${esc(t("search_ph"))}" autocomplete="off" />
-          <div id="search-results" class="search-results" style="display:none;"></div>
+        <div class="tabpane" data-tab="home">
+          ${heroCard}
+          ${schedCard}
+          ${statsCard}
+          <div class="search-wrap">
+            <input id="hub-search" placeholder="${esc(t("search_ph"))}" autocomplete="off" />
+            <div id="search-results" class="search-results" style="display:none;"></div>
+          </div>
+          ${annCard}
         </div>
-        ${annCard}
-        ${asgnCard}
-        ${discCard}
-        ${matsCard}
-        ${reviewCard}
-        ${chipRow}
-        ${catSections || `<div class="card"><p class="empty">${t("not_enrolled")}</p></div>`}
-        ${looseCard}
-        ${instructorCard}
-        ${profileCard}
+        <div class="tabpane" data-tab="courses">
+          ${chipRow}
+          ${catSections || `<div class="card"><p class="empty">${t("not_enrolled")}</p></div>`}
+          ${looseCard}
+          ${matsCard}
+          ${reviewCard}
+        </div>
+        <div class="tabpane" data-tab="asgn">
+          ${asgnCard || `<div class="card"><p class="empty">${T2p("no_asgn_student")}</p></div>`}
+        </div>
+        <div class="tabpane" data-tab="community">
+          ${discCard || `<div class="card"><p class="empty">${T2p("no_data")}</p></div>`}
+        </div>
+        <div class="tabpane" data-tab="profile">
+          ${instructorCard}
+          ${profileCard}
+        </div>
         ${hubFooter}`;
 
       document.getElementById("p-save").addEventListener("click", async () => {
@@ -720,6 +731,39 @@
         if (error) { m.textContent = t("err_save") + error.message; m.className = "msg err"; return; }
         renderStudent();
       });
+
+      // --- student navigation tabs ---
+      (function () {
+        if (!window.UI || !UI.initNav) {
+          app.querySelectorAll(".tabpane").forEach(p => p.classList.add("show"));
+          return;
+        }
+        const T = UI.t2;
+        const items = [
+          { id: "home", label: T("nav_home"), icon: "home" },
+          { id: "courses", label: T("my_courses"), icon: "book-open" },
+          { id: "asgn", label: T("asgn"), icon: "clipboard-list" },
+          { id: "community", label: T("disc"), icon: "messages-square" },
+          { id: "profile", label: T("profile_tab"), icon: "user" },
+        ];
+        let cur = "home";
+        try { cur = localStorage.getItem("hub_student_tab") || "home"; } catch (e) {}
+        if (!items.some(i => i.id === cur)) cur = "home";
+        function showT(k) {
+          cur = k;
+          try { localStorage.setItem("hub_student_tab", k); } catch (e) {}
+          app.querySelectorAll(".tabpane").forEach(p =>
+            p.classList.toggle("show", p.getAttribute("data-tab") === k));
+          document.querySelectorAll("#subnav .sn-item[data-id]").forEach(b =>
+            b.classList.toggle("on", b.getAttribute("data-id") === k));
+          const it = items.find(i => i.id === k);
+          const eb = app.querySelector(".eyebrow");
+          if (eb && it) eb.textContent = t("my_lessons") + " / " + it.label;
+        }
+        window.__stuShowTab = showT;
+        UI.initNav({ items, active: cur, onSelect: showT });
+        showT(cur);
+      })();
 
       // --- premium locks + upgrade ---
       app.querySelectorAll(".prem-btn").forEach(btn => btn.addEventListener("click", () => {
@@ -982,6 +1026,7 @@
             ? document.getElementById("ann-card")
             : document.getElementById("course-" + it.obj.id);
           if (el) {
+            if (window.__stuShowTab) window.__stuShowTab(it.type === "ann" ? "home" : "courses");
             const catEl = el.closest(".cat");
             if (catEl) catEl.classList.remove("collapsed");
             el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1194,15 +1239,6 @@
         <p class="eyebrow">Admin</p>
         <h1>Center overview</h1>
         ${__attention}
-
-        <div class="tabs">
-          <button data-tab="lessons">Lessons (${(lessons || []).length})</button>
-          <button data-tab="courses">Courses (${(courses || []).length})</button>
-          <button data-tab="students">Students (${onlyStudents.length})${stuWarn ? " ⚠️ " + stuWarn : ""}</button>
-          <button data-tab="progress">Progress</button>
-          <button data-tab="announce">Announce${(anns || []).length ? " (" + anns.length + ")" : ""}</button>
-          <a href="organizations.html" class="btn ghost" style="text-decoration:none; margin-left:auto;">🏢 Organizations &amp; licenses →</a>
-        </div>
 
         <div class="tabpane" data-tab="courses">
         <div class="card">
@@ -1721,11 +1757,32 @@
         adminTab = t;
         app.querySelectorAll(".tabpane").forEach(p =>
           p.classList.toggle("show", p.getAttribute("data-tab") === t));
-        app.querySelectorAll(".tabs button").forEach(b =>
-          b.classList.toggle("active", b.getAttribute("data-tab") === t));
+        document.querySelectorAll("#subnav .sn-item[data-id]").forEach(b =>
+          b.classList.toggle("on", b.getAttribute("data-id") === t));
+        const lbl = document.querySelector(`#subnav .sn-item[data-id="${t}"] span`);
+        const eb = app.querySelector(".eyebrow");
+        if (eb && lbl) eb.textContent = "Admin / " + lbl.textContent;
       }
-      app.querySelectorAll(".tabs button").forEach(b =>
-        b.addEventListener("click", () => showTab(b.getAttribute("data-tab"))));
+      if (window.UI && UI.initNav) UI.initNav({
+        items: [
+          { id: "lessons", label: "Lessons (" + (lessons || []).length + ")", icon: "book-open" },
+          { id: "courses", label: "Courses (" + (courses || []).length + ")", icon: "layers" },
+          { id: "students", label: "Students (" + onlyStudents.length + ")" + (stuWarn ? " ⚠️" : ""), icon: "users" },
+          { id: "progress", label: "Analytics", icon: "bar-chart-3" },
+          { id: "announce", label: "Announce" + ((anns || []).length ? " (" + anns.length + ")" : ""), icon: "megaphone" },
+          { href: "organizations.html", label: "Organizations & licenses", icon: "building-2" },
+        ],
+        active: adminTab,
+        onSelect: showTab,
+        actions: [
+          { label: "+ Lesson", icon: "plus",
+            onClick: () => { showTab("lessons"); document.getElementById("l-title")?.focus(); } },
+          { label: "+ Course", icon: "plus",
+            onClick: () => { showTab("courses"); document.getElementById("c-title")?.focus(); } },
+          { label: "+ User", icon: "user-plus",
+            onClick: () => { showTab("students"); document.getElementById("nu-email")?.focus(); } },
+        ]
+      });
       showTab(adminTab);
 
       // --- drag & drop upload zone ---

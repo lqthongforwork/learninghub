@@ -247,11 +247,6 @@
         <p class="eyebrow">${t2("teacher")}</p>
         <h1>${t2("my_teaching")}</h1>
 
-        <div class="tabs">
-          ${tabs.map(([k, label]) =>
-            `<button data-tab="${k}" class="${tab === k ? "active" : ""}">${label}</button>`).join("")}
-        </div>
-
         <div class="tabpane" data-tab="overview">
           ${attention}
           <div class="stat-grid">
@@ -517,11 +512,31 @@
         try { localStorage.setItem("hub_teacher_tab", k); } catch (e) {}
         app.querySelectorAll(".tabpane").forEach(p =>
           p.classList.toggle("show", p.getAttribute("data-tab") === k));
-        app.querySelectorAll(".tabs button").forEach(b =>
-          b.classList.toggle("active", b.getAttribute("data-tab") === k));
+        document.querySelectorAll("#subnav .sn-item[data-id]").forEach(b =>
+          b.classList.toggle("on", b.getAttribute("data-id") === k));
+        const lbl = document.querySelector(`#subnav .sn-item[data-id="${k}"] span`);
+        const eb = app.querySelector(".eyebrow");
+        if (eb && lbl) eb.textContent = t2("teacher") + " / " + lbl.textContent;
       }
-      app.querySelectorAll(".tabs button").forEach(b =>
-        b.addEventListener("click", () => showTab(b.getAttribute("data-tab"))));
+      window.UI.initNav({
+        items: [
+          { id: "overview", label: t2("overview"), icon: "layout-dashboard" },
+          { id: "students", label: t2("students"), icon: "users" },
+          { id: "progress", label: t2("progress"), icon: "bar-chart-3" },
+          { id: "asgn", label: t2("asgn"), icon: "clipboard-list" },
+          { id: "disc", label: t2("disc"), icon: "messages-square" },
+          { id: "sched", label: t2("schedule"), icon: "calendar-days" },
+          { id: "announce", label: t2("announcements"), icon: "megaphone" },
+        ],
+        active: tab,
+        onSelect: showTab,
+        actions: [
+          { label: t2("create_student"), icon: "user-plus",
+            onClick: () => { showTab("students"); document.getElementById("ns-email")?.focus(); } },
+          { label: t2("new_asgn"), icon: "plus",
+            onClick: () => { showTab("asgn"); document.getElementById("ag-title")?.focus(); } },
+        ]
+      });
       showTab(tab);
 
       // ---- progress table ----
