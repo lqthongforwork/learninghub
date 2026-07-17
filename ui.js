@@ -170,6 +170,11 @@
       remove_image: "Remove image", image_saved: "Image saved ✓",
       image_removed: "Image removed ✓",
       lessons_left: "remaining",
+      // --- Phase 9: sidebar groups ---
+      quick_actions: "Quick actions", collapse_nav: "Collapse menu",
+      g_learn: "Learning", g_comm: "Community", g_account: "Account",
+      g_content: "Content", g_people: "People", g_analytics: "Analytics",
+      g_settings: "Settings",
       lang_btn: "VI",
     },
     vi: {
@@ -329,6 +334,11 @@
       remove_image: "Xóa ảnh", image_saved: "Đã lưu ảnh ✓",
       image_removed: "Đã xóa ảnh ✓",
       lessons_left: "còn lại",
+      // --- Phase 9: nhóm menu ---
+      quick_actions: "Thao tác nhanh", collapse_nav: "Thu gọn menu",
+      g_learn: "Học tập", g_comm: "Cộng đồng", g_account: "Tài khoản",
+      g_content: "Nội dung", g_people: "Thành viên", g_analytics: "Thống kê",
+      g_settings: "Cài đặt",
       lang_btn: "EN",
     }
   };
@@ -606,41 +616,80 @@
     });
   }
 
-  // ---------- sticky navigation bar (below the header) ----------
-  // opts: { items: [{id|href, label, icon}], active, onSelect(id),
+  // ---------- left sidebar navigation (Phase 9) ----------
+  // opts: { items: [{id|href, label, icon, group?}], active, onSelect(id),
   //         actions: [{label, icon, onClick}] }
+  // Desktop: fixed left sidebar, collapsible to icons (state saved).
+  // Mobile (≤768px): off-canvas drawer opened by a ☰ in the topbar.
   function initNav(opts) {
+    document.body.classList.add("sb-nav");
+    let min = false;
+    try { min = localStorage.getItem("hub_sidebar") === "min"; } catch (e) {}
+    document.body.classList.toggle("sb-min", min);
+
     let nav = document.getElementById("subnav");
     if (!nav) {
       nav = document.createElement("nav");
       nav.id = "subnav";
-      const header = document.querySelector("header.topbar");
-      if (!header) return;
-      header.insertAdjacentElement("afterend", nav);
+      document.body.appendChild(nav);
     }
+    let bd = document.querySelector(".sn-backdrop");
+    if (!bd) {
+      bd = document.createElement("div");
+      bd.className = "sn-backdrop";
+      document.body.appendChild(bd);
+      bd.addEventListener("click", () => document.body.classList.remove("sb-open"));
+    }
+
     const one = i => i.href
-      ? `<a class="sn-item" href="${i.href}">${icon(i.icon)}<span>${i.label}</span></a>`
-      : `<button class="sn-item ${opts.active === i.id ? "on" : ""}" data-id="${i.id}">${icon(i.icon)}<span>${i.label}</span></button>`;
+      ? `<a class="sn-item" href="${i.href}" title="${i.label}">${icon(i.icon, 17)}<span>${i.label}</span></a>`
+      : `<button class="sn-item ${opts.active === i.id ? "on" : ""}" data-id="${i.id}" title="${i.label}">${icon(i.icon, 17)}<span>${i.label}</span></button>`;
+
+    let list = "", lastG = "__none__";
+    for (const i of opts.items) {
+      const g = i.group || "";
+      if (g !== lastG) { if (g) list += `<div class="sn-group">${g}</div>`; lastG = g; }
+      list += one(i);
+    }
+    if (opts.actions && opts.actions.length) {
+      list += `<div class="sn-group">${t2("quick_actions")}</div>` +
+        opts.actions.map((a, ix) =>
+          `<button class="sn-item sn-action" data-act="${ix}" title="${a.label}">${icon(a.icon, 17)}<span>${a.label}</span></button>`).join("");
+    }
+
     nav.innerHTML = `
-      <button class="sn-burger" aria-expanded="false">☰ <span>${t2("menu")}</span></button>
-      <div class="sn-items">
-        ${opts.items.map(one).join("")}
-        ${(opts.actions && opts.actions.length)
-          ? `<span class="sn-spacer"></span>` + opts.actions.map((a, ix) =>
-              `<button class="sn-item sn-action" data-act="${ix}">${icon(a.icon)}<span>${a.label}</span></button>`).join("")
-          : ""}
-      </div>`;
-    const burger = nav.querySelector(".sn-burger");
-    burger.addEventListener("click", () => {
-      const open = nav.classList.toggle("open");
-      burger.setAttribute("aria-expanded", open ? "true" : "false");
+      <div class="sn-head">
+        <img src="icons/icon-192.png" alt="" />
+        <span class="sn-name">Learning Ecology</span>
+        <button class="sn-min" title="${t2("collapse_nav")}">${min ? "⟩" : "⟨"}</button>
+      </div>
+      <div class="sn-items">${list}</div>`;
+
+    nav.querySelector(".sn-min").addEventListener("click", () => {
+      const m = document.body.classList.toggle("sb-min");
+      nav.querySelector(".sn-min").textContent = m ? "⟩" : "⟨";
+      try { localStorage.setItem("hub_sidebar", m ? "min" : "full"); } catch (e) {}
     });
+
+    // ☰ in the topbar (mobile drawer)
+    if (!document.querySelector(".sn-burger")) {
+      const tb = document.querySelector("header.topbar");
+      if (tb) {
+        const burger = document.createElement("button");
+        burger.className = "sn-burger";
+        burger.setAttribute("aria-label", t2("menu"));
+        burger.textContent = "☰";
+        tb.insertBefore(burger, tb.firstChild);
+        burger.addEventListener("click", () => document.body.classList.toggle("sb-open"));
+      }
+    }
+
     nav.querySelectorAll(".sn-item[data-id]").forEach(b => b.addEventListener("click", () => {
-      nav.classList.remove("open");
+      document.body.classList.remove("sb-open");
       if (opts.onSelect) opts.onSelect(b.getAttribute("data-id"));
     }));
     nav.querySelectorAll(".sn-action").forEach(b => b.addEventListener("click", () => {
-      nav.classList.remove("open");
+      document.body.classList.remove("sb-open");
       const a = opts.actions[Number(b.getAttribute("data-act"))];
       if (a && a.onClick) a.onClick();
     }));

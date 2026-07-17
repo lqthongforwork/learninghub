@@ -453,12 +453,12 @@
       }
       window.UI.initNav({
         items: [
-          { id: "overview", label: t2("overview"), icon: "layout-dashboard" },
-          { id: "teachers", label: t2("teachers"), icon: "graduation-cap" },
-          { id: "students", label: t2("students"), icon: "users" },
-          { id: "enroll", label: t2("enrollments"), icon: "book-plus" },
-          { id: "reports", label: t2("reports"), icon: "file-text" },
-          { id: "announce", label: t2("announcements"), icon: "megaphone" },
+          { id: "overview", label: t2("overview"), icon: "layout-dashboard", group: t2("dashboard") },
+          { id: "teachers", label: t2("teachers"), icon: "graduation-cap", group: t2("g_people") },
+          { id: "students", label: t2("students"), icon: "users", group: t2("g_people") },
+          { id: "enroll", label: t2("enrollments"), icon: "book-plus", group: t2("g_content") },
+          { id: "reports", label: t2("reports"), icon: "file-text", group: t2("g_analytics") },
+          { id: "announce", label: t2("announcements"), icon: "megaphone", group: t2("g_comm") },
         ],
         active: tab,
         onSelect: showTab,

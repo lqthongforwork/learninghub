@@ -536,13 +536,13 @@
       }
       window.UI.initNav({
         items: [
-          { id: "overview", label: t2("overview"), icon: "layout-dashboard" },
-          { id: "students", label: t2("students"), icon: "users" },
-          { id: "progress", label: t2("progress"), icon: "bar-chart-3" },
-          { id: "asgn", label: t2("asgn"), icon: "clipboard-list" },
-          { id: "disc", label: t2("disc"), icon: "messages-square" },
-          { id: "sched", label: t2("schedule"), icon: "calendar-days" },
-          { id: "announce", label: t2("announcements"), icon: "megaphone" },
+          { id: "overview", label: t2("overview"), icon: "layout-dashboard", group: t2("dashboard") },
+          { id: "students", label: t2("students"), icon: "users", group: t2("g_people") },
+          { id: "progress", label: t2("progress"), icon: "bar-chart-3", group: t2("g_analytics") },
+          { id: "asgn", label: t2("asgn"), icon: "clipboard-list", group: t2("g_content") },
+          { id: "disc", label: t2("disc"), icon: "messages-square", group: t2("g_comm") },
+          { id: "sched", label: t2("schedule"), icon: "calendar-days", group: t2("g_content") },
+          { id: "announce", label: t2("announcements"), icon: "megaphone", group: t2("g_comm") },
         ],
         active: tab,
         onSelect: showTab,

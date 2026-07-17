@@ -304,6 +304,11 @@
         ? Math.floor(m / 60) + "h" + (m % 60 ? " " + (m % 60) + "m" : "")
         : m + " min";
 
+      // Each course card can fold its lessons away (state remembered
+      // per device, so students with many courses keep a short page).
+      let collapsedCourses = {};
+      try { collapsedCourses = JSON.parse(localStorage.getItem("hub_courses_closed") || "{}"); } catch (e) {}
+
       // One roadmap card per course, grouped into collapsible categories.
       const courseCard = c => {
         const ls = (lessons || []).filter(l => l.course_id === c.id);
@@ -381,13 +386,20 @@
           </div>`;
 
         return `
-          <div class="card course-card" id="course-${c.id}" style="border-top:4px solid ${esc(color)};">
+          <div class="card course-card ${collapsedCourses[c.id] ? "collapsed" : ""}" id="course-${c.id}" style="border-top:4px solid ${esc(color)};">
             ${banner}
-            ${badgeRow}
-            ${c.description ? `<p style="color:var(--muted); font-size:0.88rem; margin:0 0 0.5rem;">${esc(c.description)}</p>` : ""}
-            ${rows ? `<div class="lesson-grid">${rows}</div>` : `<p class="empty">${t("no_lessons_course")}</p>`}
-            ${complete ? `<div class="congrats">🎉 <span style="flex:1;">${esc(c.title)}${t("congrats")}</span>
-              <button class="ghost cert-btn" data-course="${esc(c.title)}" style="flex:none;">🎓 ${T2c("cert_get")}</button></div>` : ""}
+            <button class="course-toggle" type="button" data-course="${c.id}">
+              <span class="chev">▸</span>
+              <span style="flex:1; text-align:left;">${tf("done_count", { d: doneCount, t: ls.length })}</span>
+              ${minsLeft ? `<span class="kind">${tf("time_left", { t: fmtDur(minsLeft) })}</span>` : ""}
+            </button>
+            <div class="course-body"><div>
+              ${badgeRow}
+              ${c.description ? `<p style="color:var(--muted); font-size:0.88rem; margin:0 0 0.5rem;">${esc(c.description)}</p>` : ""}
+              ${rows ? `<div class="lesson-grid">${rows}</div>` : `<p class="empty">${t("no_lessons_course")}</p>`}
+              ${complete ? `<div class="congrats">🎉 <span style="flex:1;">${esc(c.title)}${t("congrats")}</span>
+                <button class="ghost cert-btn" data-course="${esc(c.title)}" style="flex:none;">🎓 ${T2c("cert_get")}</button></div>` : ""}
+            </div></div>
           </div>`;
       };
 
@@ -874,12 +886,12 @@
         }
         const T = UI.t2;
         const items = [
-          { id: "home", label: T("nav_home"), icon: "home" },
-          { id: "courses", label: T("my_courses"), icon: "book-open" },
-          { id: "flash", label: t("flash_tab"), icon: "wallet-cards" },
-          { id: "asgn", label: T("asgn"), icon: "clipboard-list" },
-          { id: "community", label: T("disc"), icon: "messages-square" },
-          { id: "profile", label: T("profile_tab"), icon: "user" },
+          { id: "home", label: T("nav_home"), icon: "home", group: T("g_learn") },
+          { id: "courses", label: T("my_courses"), icon: "book-open", group: T("g_learn") },
+          { id: "flash", label: t("flash_tab"), icon: "wallet-cards", group: T("g_learn") },
+          { id: "asgn", label: T("asgn"), icon: "clipboard-list", group: T("g_comm") },
+          { id: "community", label: T("disc"), icon: "messages-square", group: T("g_comm") },
+          { id: "profile", label: T("profile_tab"), icon: "user", group: T("g_account") },
         ];
         let cur = "home";
         try { cur = localStorage.getItem("hub_student_tab") || "home"; } catch (e) {}
@@ -1162,6 +1174,16 @@
 
       wireFileButtons(app);
 
+      // --- collapsible course cards (state remembered per device) ---
+      app.querySelectorAll(".course-toggle").forEach(h => {
+        h.addEventListener("click", () => {
+          const cardEl = h.closest(".course-card");
+          cardEl.classList.toggle("collapsed");
+          collapsedCourses[h.getAttribute("data-course")] = cardEl.classList.contains("collapsed");
+          try { localStorage.setItem("hub_courses_closed", JSON.stringify(collapsedCourses)); } catch (e) {}
+        });
+      });
+
       // --- collapsible categories (state remembered per device) ---
       app.querySelectorAll(".cat-head").forEach(h => {
         h.addEventListener("click", () => {
@@ -1252,6 +1274,7 @@
             if (window.__stuShowTab) window.__stuShowTab(it.type === "ann" ? "home" : "courses");
             const catEl = el.closest(".cat");
             if (catEl) catEl.classList.remove("collapsed");
+            if (el.classList.contains("course-card")) el.classList.remove("collapsed");
             el.scrollIntoView({ behavior: "smooth", block: "start" });
             el.classList.add("flash");
             setTimeout(() => el.classList.remove("flash"), 1400);
@@ -1402,8 +1425,22 @@
               `<option value="${c.id}" ${l.course_id === c.id ? "selected" : ""}>${esc(c.title)}</option>`).join("")}
           </select>
           <button class="ghost l-save" data-id="${l.id}">Save</button>
+          <button class="ghost l-edit" data-id="${l.id}" title="Edit title, link and order">✏️ Edit</button>
           <button class="ghost l-del" data-id="${l.id}"
                   style="color:var(--danger); border-color:var(--danger);">Delete</button>
+        </div>
+        <div class="l-editrow" data-id="${l.id}" style="display:none; padding:0.7rem 0 1rem; border-bottom:1px solid var(--line);">
+          <div class="form-row">
+            <div class="field"><label>Title</label>
+              <input class="le-title" data-id="${l.id}" value="${esc(l.title)}" /></div>
+            <div class="field"><label>${l.storage_path ? "Uploaded file (link not editable)" : "Link (URL)"}</label>
+              <input class="le-url" data-id="${l.id}" value="${esc(l.storage_path ? l.storage_path : (l.url || ""))}" ${l.storage_path ? "disabled" : ""} /></div>
+            <div class="field" style="max-width:90px;"><label>Order</label>
+              <input type="number" class="le-order" data-id="${l.id}" value="${l.sort_order ?? 0}" min="0" /></div>
+            <button class="le-save" data-id="${l.id}">Save changes</button>
+            <button class="ghost le-cancel" data-id="${l.id}">Cancel</button>
+          </div>
+          <p class="msg le-msg" data-id="${l.id}"></p>
         </div>`;
       };
 
@@ -1652,6 +1689,23 @@
           </label>
           <p id="nu-msg" class="msg"></p>
         </div>
+
+        <div class="card">
+          <h2>⬆ Bulk import accounts <span class="kind">CSV or Excel</span></h2>
+          <p class="kind" style="margin:0 0 0.7rem;">Create many accounts at once. Columns: full_name, email, password (blank = auto-generated), role (student/teacher/admin), organization (blank = the default below), courses (course titles separated by ;), access_expires (YYYY-MM-DD). You'll see a preview with any problems before anything is created.</p>
+          <div class="form-row">
+            <button class="ghost" id="bi-template" style="flex:none;">⬇ Download template</button>
+            <div class="field" style="max-width:280px;"><label>File (.csv or .xlsx)</label>
+              <input type="file" id="bi-file" accept=".csv,.xlsx" style="padding:0.42rem;" /></div>
+            <div class="field" style="max-width:220px;"><label>Default organization</label>
+              <select id="bi-org">${(orgs || []).map(o => `<option value="${o.id}">${esc(o.name)}</option>`).join("") || `<option value="">— create an organization first —</option>`}</select></div>
+          </div>
+          <label style="font-size:0.85rem; color:var(--muted); cursor:pointer; display:block; margin-top:0.5rem;">
+            <input type="checkbox" id="bi-invite" /> Send invitation emails instead of passwords (people pick their own password — slow: the free plan only sends a few emails per hour)
+          </label>
+          <div id="bi-preview" style="margin-top:0.8rem;"></div>
+        </div>
+
         <div class="stat-grid" id="stu-summary"></div>
         <div class="card">
           <h2>Students <span id="stu-count" class="kind"></span>
@@ -2033,13 +2087,13 @@
       }
       if (window.UI && UI.initNav) UI.initNav({
         items: [
-          { id: "lessons", label: "Lessons (" + (lessons || []).length + ")", icon: "book-open" },
-          { id: "courses", label: "Courses (" + (courses || []).length + ")", icon: "layers" },
-          { id: "flash", label: "Flashcards" + (cards.length ? " (" + cards.length + ")" : ""), icon: "wallet-cards" },
-          { id: "students", label: "Students (" + onlyStudents.length + ")" + (stuWarn ? " ⚠️" : ""), icon: "users" },
-          { id: "progress", label: "Analytics", icon: "bar-chart-3" },
-          { id: "announce", label: "Announce" + ((anns || []).length ? " (" + anns.length + ")" : ""), icon: "megaphone" },
-          { href: "organizations.html", label: "Organizations & licenses", icon: "building-2" },
+          { id: "lessons", label: "Lessons (" + (lessons || []).length + ")", icon: "book-open", group: "Content" },
+          { id: "courses", label: "Courses (" + (courses || []).length + ")", icon: "layers", group: "Content" },
+          { id: "flash", label: "Flashcards" + (cards.length ? " (" + cards.length + ")" : ""), icon: "wallet-cards", group: "Content" },
+          { id: "students", label: "Students (" + onlyStudents.length + ")" + (stuWarn ? " ⚠️" : ""), icon: "users", group: "Users" },
+          { id: "progress", label: "Analytics", icon: "bar-chart-3", group: "Analytics" },
+          { id: "announce", label: "Announce" + ((anns || []).length ? " (" + anns.length + ")" : ""), icon: "megaphone", group: "Community" },
+          { href: "organizations.html", label: "Organizations & licenses", icon: "building-2", group: "Settings" },
         ],
         active: adminTab,
         onSelect: showTab,
@@ -2274,6 +2328,287 @@
         }
       });
 
+      // ================= BULK ACCOUNT IMPORT =================
+      (function () {
+        const fileIn = document.getElementById("bi-file");
+        if (!fileIn) return;
+        const box = document.getElementById("bi-preview");
+
+        // template download (UTF-8 BOM so Vietnamese opens correctly in Excel)
+        document.getElementById("bi-template").addEventListener("click", () => {
+          const tpl = [
+            "full_name,email,password,role,organization,courses,access_expires",
+            'Nguyễn Văn A,vana@example.com,,student,,"' + String((courses || [])[0]?.title || "Course title").replace(/"/g, '""') + '",2027-01-31',
+            "Trần Thị B,thib@example.com,Matkhau123,student,,,",
+            "Ms Lan,lan@example.com,,teacher,,,"
+          ].join("\r\n");
+          const blob = new Blob(["﻿" + tpl], { type: "text/csv;charset=utf-8" });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob); a.download = "account-import-template.csv"; a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        });
+
+        function parseCSV(text) {
+          const rows = []; let row = [], cell = "", q = false;
+          for (let i = 0; i < text.length; i++) {
+            const ch = text[i];
+            if (q) {
+              if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+              else cell += ch;
+            } else if (ch === '"') q = true;
+            else if (ch === ",") { row.push(cell); cell = ""; }
+            else if (ch === "\n" || ch === "\r") {
+              if (ch === "\r" && text[i + 1] === "\n") i++;
+              row.push(cell); cell = "";
+              if (row.some(c => c.trim() !== "")) rows.push(row);
+              row = [];
+            } else cell += ch;
+          }
+          row.push(cell);
+          if (row.some(c => c.trim() !== "")) rows.push(row);
+          return rows;
+        }
+
+        function loadXLSX() {
+          return new Promise((res, rej) => {
+            if (window.XLSX) return res(window.XLSX);
+            const s = document.createElement("script");
+            s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+            s.onload = () => res(window.XLSX);
+            s.onerror = () => rej(new Error("Could not load the Excel reader — check the internet connection, or save the file as CSV instead."));
+            document.head.appendChild(s);
+          });
+        }
+
+        const normH = s => String(s || "").toLowerCase().normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+        const HEADS = {
+          fullname: "full_name", name: "full_name", hoten: "full_name", hovaten: "full_name",
+          email: "email", mail: "email",
+          password: "password", matkhau: "password",
+          role: "role", vaitro: "role",
+          organization: "organization", org: "organization", tochuc: "organization",
+          courses: "courses", course: "courses", khoahoc: "courses", coursestoenrollin: "courses",
+          accessexpires: "access_expires", expires: "access_expires", expiry: "access_expires",
+          hethan: "access_expires", accountexpirationdate: "access_expires", expirationdate: "access_expires",
+          username: "username"
+        };
+        const ROLES = { student: "student", hocvien: "student", teacher: "teacher",
+                        giaovien: "teacher", admin: "admin", orgadmin: "admin",
+                        organizationadmin: "admin", quantri: "admin" };
+        const normDate = v => {
+          const s = String(v || "").trim();
+          if (!s) return null;
+          if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+          const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);   // dd/mm/yyyy
+          if (m) return m[3] + "-" + m[2].padStart(2, "0") + "-" + m[1].padStart(2, "0");
+          return "bad";
+        };
+        const genPw = () => {
+          const chars = "abcdefghjkmnpqrstuvwxyz23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+          let out = "";
+          const rnd = crypto.getRandomValues(new Uint32Array(10));
+          for (let i = 0; i < 10; i++) out += chars[rnd[i] % chars.length];
+          return out;
+        };
+
+        let parsed = null;   // validated rows, kept for the Import step
+
+        fileIn.addEventListener("change", async () => {
+          const f = fileIn.files[0];
+          if (!f) return;
+          box.innerHTML = `<p class="kind">Reading ${esc(f.name)}…</p>`;
+          let grid;
+          try {
+            if (/\.xlsx$/i.test(f.name)) {
+              const X = await loadXLSX();
+              const wb = X.read(await f.arrayBuffer());
+              const ws = wb.Sheets[wb.SheetNames[0]];
+              grid = X.utils.sheet_to_json(ws, { header: 1, raw: false, defval: "" })
+                .map(r => r.map(c => String(c ?? "")));
+            } else {
+              grid = parseCSV(new TextDecoder("utf-8").decode(await f.arrayBuffer()));
+            }
+          } catch (err) {
+            box.innerHTML = `<p class="msg err">Could not read the file: ${esc(err.message)}</p>`;
+            return;
+          }
+          if (!grid || grid.length < 2) {
+            box.innerHTML = `<p class="msg err">The file needs a header row plus at least one account row. Download the template to see the format.</p>`;
+            return;
+          }
+
+          // map columns by header name
+          const cols = grid[0].map(h => HEADS[normH(h)] || null);
+          if (!cols.includes("email")) {
+            box.innerHTML = `<p class="msg err">No "email" column found — the first row must be column names (use the template).</p>`;
+            return;
+          }
+          const defOrg = document.getElementById("bi-org").value || null;
+          const orgByName = {};
+          (orgs || []).forEach(o => { orgByName[normH(o.name)] = o.id; });
+          const courseByName = {};
+          (courses || []).forEach(c => { courseByName[normH(c.title)] = c.id; });
+          const existing = new Set((students || []).map(s => String(s.email || "").toLowerCase()).filter(Boolean));
+          const seen = new Set();
+
+          parsed = grid.slice(1).map((r, ix) => {
+            const rec = {};
+            cols.forEach((k, i) => { if (k) rec[k] = String(r[i] ?? "").trim(); });
+            const errors = [];
+            const email = String(rec.email || "").toLowerCase();
+            if (!email) errors.push("missing email");
+            else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push("invalid email");
+            else {
+              if (existing.has(email)) errors.push("account already exists");
+              if (seen.has(email)) errors.push("duplicated in this file");
+              seen.add(email);
+            }
+            const role = ROLES[normH(rec.role || "student")];
+            if (!role) errors.push('invalid role "' + rec.role + '"');
+            let org_id = defOrg;
+            if (rec.organization) {
+              org_id = orgByName[normH(rec.organization)] || null;
+              if (!org_id) errors.push('unknown organization "' + rec.organization + '"');
+            }
+            if (!org_id) errors.push("no organization");
+            const courseIds = [];
+            if (rec.courses) {
+              for (const cName of rec.courses.split(/[;|]/).map(x => x.trim()).filter(Boolean)) {
+                const cid = courseByName[normH(cName)];
+                if (cid) courseIds.push(cid);
+                else errors.push('unknown course "' + cName + '"');
+              }
+            }
+            const expires = normDate(rec.access_expires);
+            if (expires === "bad") errors.push('invalid date "' + rec.access_expires + '" (use YYYY-MM-DD)');
+            const pwGiven = rec.password || "";
+            if (pwGiven && pwGiven.length < 6) errors.push("password under 6 characters");
+            return {
+              line: ix + 2, full_name: rec.full_name || null, email,
+              password: pwGiven || genPw(), pwAuto: !pwGiven,
+              role: role || "student", org_id, courseIds,
+              access_expires: expires === "bad" ? null : expires, errors
+            };
+          });
+
+          renderPreview();
+        });
+
+        function renderPreview() {
+          const ok = parsed.filter(r => !r.errors.length);
+          const bad = parsed.filter(r => r.errors.length);
+          const stat = (k, v) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+          box.innerHTML = `
+            <div class="stat-grid">
+              ${stat("Rows in file", parsed.length)}
+              ${stat("Ready to create", ok.length)}
+              ${stat("Rows with problems", bad.length)}
+            </div>
+            <div style="max-height:300px; overflow:auto; border:1px solid var(--line); border-radius:var(--radius);">
+              <table><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Role</th><th>Courses</th><th>Status</th></tr></thead>
+              <tbody>${parsed.slice(0, 300).map(r => `
+                <tr class="${r.errors.length ? "row-off" : ""}">
+                  <td>${r.line}</td>
+                  <td>${esc(r.full_name || "—")}</td>
+                  <td>${esc(r.email || "—")}</td>
+                  <td>${esc(r.role)}</td>
+                  <td>${r.courseIds.length || "—"}</td>
+                  <td>${r.errors.length
+                        ? `<span class="pill bad">✕</span> <span class="kind" style="text-transform:none; letter-spacing:0;">${esc(r.errors.join("; "))}</span>`
+                        : `<span class="pill done">ready${r.pwAuto ? " · auto password" : ""}</span>`}</td>
+                </tr>`).join("")}</tbody></table>
+              ${parsed.length > 300 ? `<p class="kind" style="padding:0.5rem;">…showing the first 300 of ${parsed.length} rows.</p>` : ""}
+            </div>
+            ${bad.length ? `
+            <label style="font-size:0.85rem; color:var(--muted); cursor:pointer; display:block; margin-top:0.6rem;">
+              <input type="checkbox" id="bi-skip" /> Skip the ${bad.length} problem row(s) and import the ${ok.length} valid one(s) — or fix the file and choose it again
+            </label>` : ""}
+            <div class="form-row" style="margin-top:0.7rem;">
+              <button id="bi-go" ${(!ok.length || bad.length) ? "disabled" : ""}>Create ${ok.length} account(s)</button>
+              <button class="ghost" id="bi-cancel">Cancel</button>
+            </div>
+            <div id="bi-run"></div>`;
+
+          const goBtn = document.getElementById("bi-go");
+          document.getElementById("bi-cancel").addEventListener("click", () => {
+            parsed = null; fileIn.value = ""; box.innerHTML = "";
+          });
+          const skip = document.getElementById("bi-skip");
+          if (skip) skip.addEventListener("change", () => { goBtn.disabled = !(skip.checked && ok.length); });
+          goBtn.addEventListener("click", () => runImport(ok));
+        }
+
+        async function runImport(rows) {
+          const run = document.getElementById("bi-run");
+          document.getElementById("bi-go").disabled = true;
+          const inviteMode = document.getElementById("bi-invite").checked;
+          const { data: { session } } = await sb.auth.getSession();
+          const today = dstr(new Date());
+          const results = [];
+          for (let i = 0; i < rows.length; i++) {
+            const r = rows[i];
+            run.innerHTML = `
+              <p class="kind" style="margin:0.7rem 0 0.25rem;">Creating ${i + 1} of ${rows.length} — ${esc(r.email)}</p>
+              <div class="progress"><span style="width:${Math.round(i / rows.length * 100)}%;"></span></div>`;
+            try {
+              const payload = { action: "create", email: r.email, full_name: r.full_name,
+                                role: r.role, org_id: r.org_id };
+              if (inviteMode) {
+                payload.invite = true;
+                payload.redirect = new URL("reset.html", location.href).href;
+              } else payload.password = r.password;
+              const res = await fetch(SUPABASE_URL + "/functions/v1/manage-user", {
+                method: "POST",
+                headers: { "Content-Type": "application/json",
+                           Authorization: "Bearer " + session.access_token,
+                           apikey: SUPABASE_ANON_KEY },
+                body: JSON.stringify(payload)
+              });
+              const out = await res.json();
+              if (!res.ok || out.error) throw new Error(out.error || "request failed");
+              let note = [];
+              if (r.role === "student" && r.courseIds.length) {
+                const { error: enErr } = await sb.from("enrollments").insert(
+                  r.courseIds.map(cid => ({ student_id: out.user_id, course_id: cid,
+                                            teacher_id: user.id, org_id: r.org_id })));
+                note.push(enErr ? "enrollment failed: " + enErr.message : r.courseIds.length + " course(s)");
+              }
+              if (r.role === "student" && r.access_expires) {
+                const { error: exErr } = await sb.from("profiles")
+                  .update({ access_start: today, access_expires: r.access_expires })
+                  .eq("id", out.user_id);
+                note.push(exErr ? "expiry failed" : "until " + r.access_expires);
+              }
+              results.push({ email: r.email, full_name: r.full_name || "", status: "created",
+                             detail: note.join(" · "),
+                             password: inviteMode ? "(invitation email)" : r.password });
+            } catch (err) {
+              results.push({ email: r.email, full_name: r.full_name || "", status: "FAILED",
+                             detail: String(err.message || err), password: "" });
+            }
+          }
+          const okN = results.filter(x => x.status === "created").length;
+          const badN = results.length - okN;
+          run.innerHTML = `
+            <div class="progress"><span style="width:100%;"></span></div>
+            <div class="stat-grid" style="margin-top:0.7rem;">
+              <div class="stat"><div class="k">Created</div><div class="v">${okN}</div></div>
+              <div class="stat"><div class="k">Failed</div><div class="v">${badN}</div></div>
+            </div>
+            ${badN ? `<p class="msg err">${results.filter(x => x.status === "FAILED").slice(0, 5)
+                .map(x => esc(x.email + ": " + x.detail)).join("<br>")}${badN > 5 ? "<br>…" : ""}</p>` : ""}
+            <div class="form-row" style="margin-top:0.5rem;">
+              <button class="ghost" id="bi-report">⬇ Download report${inviteMode ? "" : " (includes the passwords — keep it safe!)"}</button>
+              <button id="bi-done">Done — refresh</button>
+            </div>`;
+          document.getElementById("bi-report").addEventListener("click", () =>
+            UI.csv("import-report.csv", results));
+          document.getElementById("bi-done").addEventListener("click", () => renderAdmin());
+        }
+      })();
+      // =============== END BULK ACCOUNT IMPORT ===============
+
       document.getElementById("e-add").addEventListener("click", async () => {
         const student_id = document.getElementById("e-student").value;
         const course_id = document.getElementById("e-course").value;
@@ -2477,6 +2812,42 @@
             setTimeout(() => renderAdmin(), 600);
           });
         });
+
+        // ✏️ full lesson editor (title / link / order)
+        box.querySelectorAll(".l-edit").forEach(btn => btn.addEventListener("click", () => {
+          const row = box.querySelector(`.l-editrow[data-id="${btn.getAttribute("data-id")}"]`);
+          const open = row.style.display !== "none";
+          row.style.display = open ? "none" : "block";
+          btn.textContent = open ? "✏️ Edit" : "✏️ Close";
+          if (!open) row.querySelector(".le-title").focus();
+        }));
+        box.querySelectorAll(".le-cancel").forEach(btn => btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-id");
+          box.querySelector(`.l-editrow[data-id="${id}"]`).style.display = "none";
+          const eb = box.querySelector(`.l-edit[data-id="${id}"]`);
+          if (eb) eb.textContent = "✏️ Edit";
+        }));
+        box.querySelectorAll(".le-save").forEach(btn => btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-id");
+          const m = box.querySelector(`.le-msg[data-id="${id}"]`);
+          const lesson = (lessons || []).find(x => x.id === id);
+          const title = box.querySelector(`.le-title[data-id="${id}"]`).value.trim();
+          const sort_order = parseInt(box.querySelector(`.le-order[data-id="${id}"]`).value, 10) || 0;
+          if (!title) { m.textContent = "The title can't be empty."; m.className = "msg err"; return; }
+          const patch = { title, sort_order };
+          if (!lesson?.storage_path) {
+            const url = box.querySelector(`.le-url[data-id="${id}"]`).value.trim();
+            if (!url) { m.textContent = "Add a link, or delete the lesson instead."; m.className = "msg err"; return; }
+            patch.url = url;
+            patch.kind = kindOf(url) || "link";
+          }
+          btn.disabled = true;
+          const { error } = await sb.from("lessons").update(patch).eq("id", id);
+          btn.disabled = false;
+          if (error) { m.textContent = "Could not save: " + error.message; m.className = "msg err"; return; }
+          m.textContent = "Lesson updated ✓"; m.className = "msg";
+          setTimeout(() => renderAdmin(), 600);
+        }));
 
         box.querySelectorAll(".l-img").forEach(btn => btn.addEventListener("click", () => {
           window.__liTarget = btn.getAttribute("data-id");
