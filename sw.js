@@ -26,6 +26,7 @@ const CORE = [
   "./reset.html",
   "./reading.html",
   "./shadow.html",
+  "./writing.html",
   "./cert.html",
   "./styles.css",
   "./ui.js",
