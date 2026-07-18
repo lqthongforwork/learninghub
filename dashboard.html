@@ -906,6 +906,7 @@
           { id: "courses", label: T("my_courses"), icon: "book-open", group: T("g_learn") },
           { id: "flash", label: t("flash_tab"), icon: "wallet-cards", group: T("g_learn") },
           { href: "reading.html", label: "Đọc hiểu HSK 阅读", icon: "book-open", group: T("g_learn") },
+          { href: "shadow.html", label: "Shadow Chinese 跟读", icon: "video", group: T("g_learn") },
           { id: "asgn", label: T("asgn"), icon: "clipboard-list", group: T("g_comm") },
           { id: "community", label: T("disc"), icon: "messages-square", group: T("g_comm") },
           { id: "profile", label: T("profile_tab"), icon: "user", group: T("g_account") },
@@ -1737,6 +1738,23 @@
             </div>
           </div>
           <p class="kind" style="margin:0 0 0.6rem;">A Free student can open the first N free texts (in the order below); 0 = unlimited. 👑 texts and "Assigned only" texts need Premium or a personal grant. Students never see unpublished drafts.</p>
+          <div class="form-row" style="margin-bottom:0.7rem;">
+            <div class="field"><label>Search</label>
+              <input id="rtf-q" placeholder="Title, category or tag…" autocomplete="off" /></div>
+            <div class="field" style="max-width:130px;"><label>Level</label>
+              <select id="rtf-lvl">
+                <option value="0">All levels</option>
+                ${[1,2,3,4,5,6].map(n => `<option value="${n}">HSK ${n}</option>`).join("")}
+              </select></div>
+            <div class="field" style="max-width:160px;"><label>Type</label>
+              <select id="rtf-type">
+                <option value="all">All texts</option>
+                <option value="free">Free</option>
+                <option value="premium">👑 Premium</option>
+                <option value="assigned">Assigned only</option>
+                <option value="draft">Drafts</option>
+              </select></div>
+          </div>
           <div id="rt-list"></div>
         </div>
 
@@ -2687,7 +2705,8 @@
           "share_keys", "lock_events", "flashcards", "flashcard_reviews",
           "certificates", "page_views",
           "reading_texts", "reading_dict", "reading_settings",
-          "reading_vocab", "reading_days", "reading_progress", "reading_access"];
+          "reading_vocab", "reading_days", "reading_progress", "reading_access",
+          "shadow_videos", "shadow_progress", "shadow_days", "shadow_profile"];
         const backup = { app: "Learning Ecology", exported_at: new Date().toISOString(), tables: {} };
         const problems = [];
         for (let i = 0; i < TABLES.length; i++) {
