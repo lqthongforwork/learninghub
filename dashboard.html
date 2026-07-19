@@ -71,6 +71,40 @@
       return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms || 200); };
     }
 
+    // Shared by the account importer and the reading importer.
+    // Handles quoted cells, "" escapes, and line breaks inside cells.
+    function parseCSV(text) {
+      const rows = []; let row = [], cell = "", q = false;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (q) {
+          if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+          else cell += ch;
+        } else if (ch === '"') q = true;
+        else if (ch === ",") { row.push(cell); cell = ""; }
+        else if (ch === "\n" || ch === "\r") {
+          if (ch === "\r" && text[i + 1] === "\n") i++;
+          row.push(cell); cell = "";
+          if (row.some(c => c.trim() !== "")) rows.push(row);
+          row = [];
+        } else cell += ch;
+      }
+      row.push(cell);
+      if (row.some(c => c.trim() !== "")) rows.push(row);
+      return rows;
+    }
+
+    function loadXLSX() {
+      return new Promise((res, rej) => {
+        if (window.XLSX) return res(window.XLSX);
+        const sc = document.createElement("script");
+        sc.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+        sc.onload = () => res(window.XLSX);
+        sc.onerror = () => rej(new Error("Could not load the Excel reader — check the internet connection, or save the file as CSV instead."));
+        document.head.appendChild(sc);
+      });
+    }
+
     // Label a file/link by its extension.
     function kindOf(name) {
       const e = (String(name || "").split("?")[0].split(".").pop() || "").toLowerCase();
@@ -1737,6 +1771,16 @@
             <textarea id="rt-tr" style="min-height:80px;" placeholder="I get up at 7 a.m. …"></textarea></div>
           <button id="rt-add">Add reading text</button>
           <p id="rt-msg" class="msg"></p>
+          <details style="margin-top:0.5rem;">
+            <summary style="cursor:pointer; font-size:0.88rem; color:var(--accent-ink); font-weight:600;">⬆ Bulk import — many texts from one file</summary>
+            <p class="kind" style="margin:0.5rem 0;">Columns: <b>title, level (1–6), category, tags, tier (free/premium), audience (everyone/assigned), published (yes/no), content, translation</b>. Inside the content cell, separate paragraphs with <b>||</b> — or press Option+Enter (Alt+Enter) in Excel for a real line break. Tags separated by ; </p>
+            <div class="form-row">
+              <button class="ghost" id="rti-template" style="flex:none;">⬇ Download template</button>
+              <div class="field" style="max-width:280px;"><label>File (.csv or .xlsx)</label>
+                <input type="file" id="rti-file" accept=".csv,.xlsx" style="padding:0.42rem;" /></div>
+            </div>
+            <div id="rti-preview" style="margin-top:0.6rem;"></div>
+          </details>
         </div>
 
         <div class="card">
@@ -2625,6 +2669,149 @@
           wireRt();
         }
 
+        // ---- bulk import of reading texts ----
+        document.getElementById("rti-template").addEventListener("click", () => {
+          const tpl = [
+            "title,level,category,tags,tier,audience,published,content,translation",
+            '我的周末,1,Sinh hoạt,cuối tuần; gia đình,free,everyone,yes,"周末我不上学。我和妈妈去公园。||公园里人很多。我们很高兴。","On weekends I don\'t go to school. I go to the park with mom.||There are many people in the park. We are very happy."',
+            '去饭馆吃饭,2,Ẩm thực,ẩm thực,premium,everyone,yes,"今天是我的生日，我们去饭馆吃饭。||我点了鱼和米饭，很好吃。","Today is my birthday; we eat at a restaurant.||I ordered fish and rice — delicious."'
+          ].join("\r\n");
+          const blob = new Blob(["﻿" + tpl], { type: "text/csv;charset=utf-8" });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob); a.download = "reading-import-template.csv"; a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        });
+
+        const rtiFile = document.getElementById("rti-file");
+        const rtiBox = document.getElementById("rti-preview");
+        const RTI_HEADS = {
+          title: "title", tieude: "title",
+          level: "level", hsklevel: "level", capdo: "level", hsk: "level",
+          category: "category", chude: "category",
+          tags: "tags", the: "tags",
+          tier: "tier", access: "tier",
+          audience: "audience", visibleto: "audience", visible: "audience",
+          published: "published", status: "published", trangthai: "published",
+          content: "content", text: "content", chinesetext: "content", noidung: "content",
+          translation: "translation", dich: "translation", bandich: "translation"
+        };
+        const paras = v => String(v || "")
+          .replace(/\s*\|\|\s*/g, "\n").replace(/\\n/g, "\n").trim();
+
+        rtiFile.addEventListener("change", async () => {
+          const f = rtiFile.files[0];
+          if (!f) return;
+          rtiBox.innerHTML = `<p class="kind">Reading ${esc(f.name)}…</p>`;
+          let grid;
+          try {
+            if (/\.xlsx$/i.test(f.name)) {
+              const X = await loadXLSX();
+              const wb = X.read(await f.arrayBuffer());
+              grid = X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: "" })
+                .map(r => r.map(c => String(c ?? "")));
+            } else {
+              grid = parseCSV(new TextDecoder("utf-8").decode(await f.arrayBuffer()));
+            }
+          } catch (err) {
+            rtiBox.innerHTML = `<p class="msg err">Could not read the file: ${esc(err.message)}</p>`;
+            return;
+          }
+          if (!grid || grid.length < 2) {
+            rtiBox.innerHTML = `<p class="msg err">The file needs a header row plus at least one text row — use the template.</p>`;
+            return;
+          }
+          const cols = grid[0].map(h => RTI_HEADS[nrm(h)] || null);
+          if (!cols.includes("title") || !cols.includes("content")) {
+            rtiBox.innerHTML = `<p class="msg err">Columns "title" and "content" are required — the first row must be column names (use the template).</p>`;
+            return;
+          }
+          const parsedR = grid.slice(1).map((r, ix) => {
+            const rec = {};
+            cols.forEach((k, i) => { if (k) rec[k] = String(r[i] ?? "").trim(); });
+            const errors = [];
+            if (!rec.title) errors.push("missing title");
+            const content = paras(rec.content);
+            if (!content) errors.push("missing content");
+            const level = parseInt(rec.level, 10);
+            if (!(level >= 1 && level <= 6)) errors.push('level must be 1–6 (got "' + (rec.level || "") + '")');
+            const tierRaw = nrm(rec.tier || "free");
+            const tier = ["premium", "prem", "👑"].includes(rec.tier) || tierRaw === "premium" ? "premium"
+                       : (tierRaw === "free" || tierRaw === "" ? "free" : null);
+            if (!tier) errors.push('tier must be free or premium (got "' + rec.tier + '")');
+            const audRaw = nrm(rec.audience || "everyone");
+            const audience = ["everyone", "all", "allstudents", ""].includes(audRaw) ? "everyone"
+                           : (["assigned", "assignedonly"].includes(audRaw) ? "assigned" : null);
+            if (!audience) errors.push('audience must be everyone or assigned (got "' + rec.audience + '")');
+            const pubRaw = nrm(rec.published || "yes");
+            const published = !["no", "false", "0", "draft", "nhap", "khong"].includes(pubRaw);
+            return {
+              line: ix + 2, errors,
+              row: { title: rec.title, level: level || 1, category: rec.category || null,
+                     tags: (rec.tags || "").split(/[;,]/).map(x => x.trim()).filter(Boolean),
+                     tier: tier || "free", audience: audience || "everyone", published,
+                     content, translation: paras(rec.translation) }
+            };
+          });
+          const okR = parsedR.filter(x => !x.errors.length);
+          const badR = parsedR.filter(x => x.errors.length);
+          rtiBox.innerHTML = `
+            <div class="stat-grid">
+              <div class="stat"><div class="k">Rows</div><div class="v">${parsedR.length}</div></div>
+              <div class="stat"><div class="k">Ready</div><div class="v">${okR.length}</div></div>
+              <div class="stat"><div class="k">Problems</div><div class="v">${badR.length}</div></div>
+            </div>
+            <div style="max-height:240px; overflow:auto; border:1px solid var(--line); border-radius:var(--radius);">
+              <table><thead><tr><th>#</th><th>Title</th><th>Level</th><th>¶</th><th>Status</th></tr></thead>
+              <tbody>${parsedR.slice(0, 200).map(x => `
+                <tr class="${x.errors.length ? "row-off" : ""}">
+                  <td>${x.line}</td><td>${esc(x.row.title || "—")}</td>
+                  <td>${x.errors.some(e => e.startsWith("level")) ? "?" : `<span class="hsk-pill hsk-${x.row.level}">HSK ${x.row.level}</span>`}</td>
+                  <td>${x.row.content ? x.row.content.split("\n").length : 0}</td>
+                  <td>${x.errors.length
+                        ? `<span class="pill bad">✕</span> <span class="kind" style="text-transform:none; letter-spacing:0;">${esc(x.errors.join("; "))}</span>`
+                        : `<span class="pill done">ready · ${x.row.tier === "premium" ? "👑" : "free"}${x.row.published ? "" : " · draft"}</span>`}</td>
+                </tr>`).join("")}</tbody></table>
+            </div>
+            ${badR.length ? `
+            <label style="font-size:0.85rem; color:var(--muted); cursor:pointer; display:block; margin-top:0.6rem;">
+              <input type="checkbox" id="rti-skip" /> Skip the ${badR.length} problem row(s) and import the ${okR.length} valid one(s)
+            </label>` : ""}
+            <div class="form-row" style="margin-top:0.7rem;">
+              <button id="rti-go" ${(!okR.length || badR.length) ? "disabled" : ""}>Import ${okR.length} text(s)</button>
+              <button class="ghost" id="rti-cancel">Cancel</button>
+            </div>
+            <p id="rti-run" class="msg"></p>`;
+          document.getElementById("rti-cancel").addEventListener("click", () => {
+            rtiFile.value = ""; rtiBox.innerHTML = "";
+          });
+          const skip = document.getElementById("rti-skip");
+          const goBtn = document.getElementById("rti-go");
+          if (skip) skip.addEventListener("change", () => { goBtn.disabled = !(skip.checked && okR.length); });
+          goBtn.addEventListener("click", async () => {
+            goBtn.disabled = true;
+            const runEl = document.getElementById("rti-run");
+            const base = rtexts.length;
+            const rowsIn = okR.map((x, i) => ({ ...x.row, sort_order: base + i + 1, created_by: user.id }));
+            let doneN = 0;
+            for (let i = 0; i < rowsIn.length; i += 50) {
+              runEl.className = "msg";
+              runEl.textContent = "Importing " + Math.min(i + 50, rowsIn.length) + " / " + rowsIn.length + "…";
+              const { data: ins, error } = await sb.from("reading_texts").insert(rowsIn.slice(i, i + 50)).select();
+              if (error) {
+                runEl.className = "msg err";
+                runEl.textContent = "Import stopped after " + doneN + " texts: " + error.message + (rtRes.error ? " — run migration25/26 first." : "");
+                renderRt();
+                return;
+              }
+              rtexts.push(...(ins || []));
+              doneN += (ins || []).length;
+            }
+            runEl.textContent = "Imported " + doneN + " reading texts ✓";
+            rtiFile.value = "";
+            renderRt();
+          });
+        });
+
         const saveRtf = () => { try { localStorage.setItem("hub_rtfilter", JSON.stringify(rtf)); } catch (e) {} };
         rtfQ.addEventListener("input", debounce(() => { rtf.q = rtfQ.value; saveRtf(); renderRt(); }, 180));
         rtfL.addEventListener("change", () => { rtf.lvl = Number(rtfL.value) || 0; saveRtf(); renderRt(); });
@@ -3109,38 +3296,6 @@
           a.href = URL.createObjectURL(blob); a.download = "account-import-template.csv"; a.click();
           setTimeout(() => URL.revokeObjectURL(a.href), 4000);
         });
-
-        function parseCSV(text) {
-          const rows = []; let row = [], cell = "", q = false;
-          for (let i = 0; i < text.length; i++) {
-            const ch = text[i];
-            if (q) {
-              if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
-              else cell += ch;
-            } else if (ch === '"') q = true;
-            else if (ch === ",") { row.push(cell); cell = ""; }
-            else if (ch === "\n" || ch === "\r") {
-              if (ch === "\r" && text[i + 1] === "\n") i++;
-              row.push(cell); cell = "";
-              if (row.some(c => c.trim() !== "")) rows.push(row);
-              row = [];
-            } else cell += ch;
-          }
-          row.push(cell);
-          if (row.some(c => c.trim() !== "")) rows.push(row);
-          return rows;
-        }
-
-        function loadXLSX() {
-          return new Promise((res, rej) => {
-            if (window.XLSX) return res(window.XLSX);
-            const s = document.createElement("script");
-            s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
-            s.onload = () => res(window.XLSX);
-            s.onerror = () => rej(new Error("Could not load the Excel reader — check the internet connection, or save the file as CSV instead."));
-            document.head.appendChild(s);
-          });
-        }
 
         const normH = s => String(s || "").toLowerCase().normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
