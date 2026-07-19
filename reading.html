@@ -16,6 +16,8 @@
     --l1:#178a4c; --l1bg:#e2f4e9; --l2:#1d5fc2; --l2bg:#e4edfb;
     --l3:#9a7b00; --l3bg:#faf3d0; --l4:#c05600; --l4bg:#fdeadc;
     --l5:#c62f2f; --l5bg:#fde3e3; --l6:#7c3aad; --l6bg:#f1e5fb;
+    --l7:#0d7f7a; --l7bg:#dcf2f0; --l8:#b8267d; --l8bg:#fbe1f0;
+    --l9:#47526b; --l9bg:#e6e9f2;
     --hz:26px; --py:14px; --tr:15px;
     --hz-font:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
   }
@@ -27,6 +29,8 @@
       --l1:#4cc98a; --l1bg:#173226; --l2:#6ea8ff; --l2bg:#1c2b47;
       --l3:#e8c74a; --l3bg:#33301a; --l4:#ffa05e; --l4bg:#38281c;
       --l5:#ff7b7b; --l5bg:#3a2020; --l6:#cfa0f0; --l6bg:#30203f;
+      --l7:#4fd1c5; --l7bg:#123734; --l8:#f48fce; --l8bg:#3d1830;
+      --l9:#aab6d3; --l9bg:#262d40;
     }
   }
   * { box-sizing:border-box; }
@@ -68,6 +72,8 @@
   .lv1 { color:var(--l1); background:var(--l1bg); } .lv2 { color:var(--l2); background:var(--l2bg); }
   .lv3 { color:var(--l3); background:var(--l3bg); } .lv4 { color:var(--l4); background:var(--l4bg); }
   .lv5 { color:var(--l5); background:var(--l5bg); } .lv6 { color:var(--l6); background:var(--l6bg); }
+  .lv7 { color:var(--l7); background:var(--l7bg); } .lv8 { color:var(--l8); background:var(--l8bg); }
+  .lv9 { color:var(--l9); background:var(--l9bg); }
   .lv0 { color:var(--muted); background:var(--bg); }
 
   /* library */
@@ -109,10 +115,14 @@
   body.colors-on .tok.l1 .hz { color:var(--l1); } body.colors-on .tok.l2 .hz { color:var(--l2); }
   body.colors-on .tok.l3 .hz { color:var(--l3); } body.colors-on .tok.l4 .hz { color:var(--l4); }
   body.colors-on .tok.l5 .hz { color:var(--l5); } body.colors-on .tok.l6 .hz { color:var(--l6); }
+  body.colors-on .tok.l7 .hz { color:var(--l7); } body.colors-on .tok.l8 .hz { color:var(--l8); }
+  body.colors-on .tok.l9 .hz { color:var(--l9); }
   body.colors-on .tok.zh { border-bottom:3px solid transparent; }
   body.colors-on .tok.l1 { border-bottom-color:var(--l1); } body.colors-on .tok.l2 { border-bottom-color:var(--l2); }
   body.colors-on .tok.l3 { border-bottom-color:var(--l3); } body.colors-on .tok.l4 { border-bottom-color:var(--l4); }
   body.colors-on .tok.l5 { border-bottom-color:var(--l5); } body.colors-on .tok.l6 { border-bottom-color:var(--l6); }
+  body.colors-on .tok.l7 { border-bottom-color:var(--l7); } body.colors-on .tok.l8 { border-bottom-color:var(--l8); }
+  body.colors-on .tok.l9 { border-bottom-color:var(--l9); }
   .tok .py { font-size:var(--py); line-height:1.25; color:var(--muted);
              font-family:"Helvetica Neue",Arial,sans-serif; white-space:nowrap; padding:0 2px; }
   body.py-hidden .tok .py { display:none; }
@@ -191,6 +201,35 @@
   #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--bg);
            border-radius:10px; padding:10px 18px; font-size:14px; z-index:1500; opacity:0; transition:opacity .3s; pointer-events:none; }
   #toast.show { opacity:.95; }
+
+  /* ---- right-side reading-settings drawer ---- */
+  #lvlChips { flex-wrap:wrap; }
+  button:focus-visible, .chip:focus-visible, select:focus-visible, input:focus-visible {
+    outline:2px solid var(--accent); outline-offset:2px; }
+  #btnSettings { white-space:nowrap; }
+  #readerStage:fullscreen #btnSettings, #readerStage:-webkit-full-screen #btnSettings, #readerStage.fakefs #btnSettings {
+    position:fixed; bottom:16px; right:16px; z-index:1101; box-shadow:0 6px 24px rgba(0,0,0,.3); opacity:.85; }
+  #setBack { position:fixed; inset:0; background:rgba(10,16,28,.45); z-index:1090; }
+  #setPanel { position:fixed; top:0; right:0; bottom:0; width:min(330px, 92vw); background:var(--panel);
+              border-left:1px solid var(--line); z-index:1100; padding:14px 16px 46px; overflow-y:auto;
+              transform:translateX(105%); transition:transform .25s ease; box-shadow:-10px 0 34px rgba(0,0,0,.18); }
+  body.set-open #setPanel { transform:none; }
+  .sp-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .sp-head b { font-size:16px; }
+  #spClose { border:none; background:none; font-size:16px; color:var(--muted); padding:4px 8px; }
+  .sp-group { border-top:1px solid var(--line); padding:10px 0 4px; }
+  .sp-group h4 { margin:0 0 8px; font-size:12.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+  .sp-group .row { margin-bottom:8px; }
+  .sp-group .group { display:flex; align-items:center; gap:8px; width:100%; margin-bottom:8px;
+                     color:var(--muted); font-size:13px; }
+  .sp-group .group input[type=range] { flex:1; min-width:0; accent-color:var(--accent); }
+  .sp-group .toggle { display:flex; margin-bottom:8px; }
+  .sp-group select { width:100%; }
+  .sp-group select.inlinesel { width:auto; flex:1; }
+  @media (min-width:1150px) {
+    body.set-open main { margin-right:346px; }
+    body.set-open #setBack { display:none; }
+  }
   .offline { color:var(--l5); font-weight:600; }
 
   @media (max-width:640px) {
@@ -221,12 +260,16 @@
   <section class="view active" id="view-library">
     <div class="panel row">
       <div class="row" id="lvlChips">
-        <span class="chip active" data-l="0">Tất cả</span>
-        <span class="chip" data-l="1">HSK 1</span><span class="chip" data-l="2">HSK 2</span>
-        <span class="chip" data-l="3">HSK 3</span><span class="chip" data-l="4">HSK 4</span>
-        <span class="chip" data-l="5">HSK 5</span><span class="chip" data-l="6">HSK 6</span>
+        <span class="chip active" data-l="0" role="button" tabindex="0">Tất cả</span>
+        <span class="chip" data-l="1" role="button" tabindex="0">HSK 1</span><span class="chip" data-l="2" role="button" tabindex="0">HSK 2</span>
+        <span class="chip" data-l="3" role="button" tabindex="0">HSK 3</span><span class="chip" data-l="4" role="button" tabindex="0">HSK 4</span>
+        <span class="chip" data-l="5" role="button" tabindex="0">HSK 5</span><span class="chip" data-l="6" role="button" tabindex="0">HSK 6</span>
+        <span class="chip" data-l="7" role="button" tabindex="0">HSK 7</span><span class="chip" data-l="8" role="button" tabindex="0">HSK 8</span>
+        <span class="chip" data-l="9" role="button" tabindex="0">HSK 9</span>
       </div>
-      <input id="libSearch" class="grow" placeholder="Tìm theo tên bài, chủ đề…" style="min-width:180px">
+      <select id="topicSel" aria-label="Lọc theo chủ đề" style="max-width:190px"><option value="">Mọi chủ đề</option></select>
+      <input id="libSearch" class="grow" placeholder="Tìm theo tên bài, chủ đề, bản dịch…" style="min-width:180px" aria-label="Tìm bài đọc">
+      <button id="btnClearFilters" class="small" hidden>✕ Xóa lọc</button>
     </div>
     <div id="dictStatus" class="mutetext" style="margin-bottom:10px"></div>
     <div class="libgrid" id="libGrid"></div>
@@ -234,36 +277,11 @@
 
   <!-- ============ READER ============ -->
   <section class="view" id="view-reader">
-    <div class="rtoolbar" id="rtb">
-      <span class="group">Pinyin:
-        <select id="pyPos">
-          <option value="above">Trên chữ</option>
-          <option value="below">Dưới chữ</option>
-          <option value="hidden">Ẩn</option>
-        </select>
-      </span>
-      <label class="toggle"><input type="checkbox" id="tgTr" checked> Bản dịch</label>
-      <label class="toggle"><input type="checkbox" id="tgColors" checked> Màu HSK</label>
-      <label class="toggle"><input type="checkbox" id="tgTips" checked> Chú thích từ</label>
-      <label class="toggle"><input type="checkbox" id="tgAudio" checked> Âm thanh khi nhấp</label>
-      <span class="group">字 <input type="range" id="szHz" min="16" max="130" value="26"><span id="szHzV">26</span></span>
-      <span class="group">pīn <input type="range" id="szPy" min="9" max="64" value="14"><span id="szPyV">14</span></span>
-      <span class="group">Dịch <input type="range" id="szTr" min="10" max="40" value="15"><span id="szTrV">15</span></span>
-      <span class="group">
-        <select id="preset">
-          <option value="">— Chế độ —</option>
-          <option value="26,14,15">Tự học</option>
-          <option value="40,20,18">Lớp học</option>
-          <option value="64,30,24">Trình chiếu</option>
-          <option value="96,44,30">Máy chiếu lớn</option>
-        </select>
-      </span>
-      <span class="group">Tốc độ đọc <input type="range" id="aRate" min="0.5" max="1.3" step="0.05" value="0.9"></span>
-      <button class="small" id="btnReadAll">🔊 Đọc cả bài</button>
-      <button class="small" id="btnPresent">⛶ Trình chiếu</button>
-    </div>
     <div id="readerStage">
-      <h2 id="rTitle"></h2>
+      <div class="row" style="align-items:flex-start; flex-wrap:nowrap">
+        <h2 id="rTitle" class="grow" style="margin-right:8px"></h2>
+        <button id="btnSettings" class="small" aria-expanded="false" aria-controls="setPanel" title="Mở / đóng cài đặt đọc">⚙ Cài đặt</button>
+      </div>
       <div id="rMeta" class="row mutetext"></div>
       <div id="rBody"></div>
       <div class="row" style="margin-top:16px">
@@ -275,8 +293,46 @@
       <div class="legend" id="rLegend">
         <span class="lv lv1">HSK 1</span><span class="lv lv2">HSK 2</span><span class="lv lv3">HSK 3</span>
         <span class="lv lv4">HSK 4</span><span class="lv lv5">HSK 5</span><span class="lv lv6">HSK 6</span>
+        <span class="lv lv7">HSK 7</span><span class="lv lv8">HSK 8</span><span class="lv lv9">HSK 9</span>
         <span class="lv lv0">ngoài HSK</span>
       </div>
+
+      <div id="setBack" hidden></div>
+      <aside id="setPanel" role="dialog" aria-label="Cài đặt đọc" aria-hidden="true">
+        <div class="sp-head"><b>⚙ Cài đặt đọc</b><button id="spClose" aria-label="Đóng cài đặt">✕</button></div>
+        <div class="sp-group"><h4>Hiển thị</h4>
+          <div class="group">Pinyin
+            <select id="pyPos" class="inlinesel">
+              <option value="above">Trên chữ</option>
+              <option value="below">Dưới chữ</option>
+              <option value="hidden">Ẩn</option>
+            </select></div>
+          <label class="toggle"><input type="checkbox" id="tgTr" checked> Bản dịch tiếng Việt</label>
+          <label class="toggle"><input type="checkbox" id="tgColors" checked> Màu HSK</label>
+          <label class="toggle"><input type="checkbox" id="tgTips" checked> Chú thích từ (rê chuột)</label>
+          <label class="toggle"><input type="checkbox" id="tgAudio" checked> Âm thanh khi nhấp từ</label>
+        </div>
+        <div class="sp-group"><h4>Cỡ chữ</h4>
+          <div class="group">字 Hán <input type="range" id="szHz" min="16" max="130" value="26" aria-label="Cỡ chữ Hán"><span id="szHzV">26</span></div>
+          <div class="group">Pinyin <input type="range" id="szPy" min="9" max="64" value="14" aria-label="Cỡ chữ pinyin"><span id="szPyV">14</span></div>
+          <div class="group">Dịch <input type="range" id="szTr" min="10" max="40" value="15" aria-label="Cỡ chữ bản dịch"><span id="szTrV">15</span></div>
+          <div class="group">Chế độ
+            <select id="preset" class="inlinesel">
+              <option value="">— Chọn nhanh —</option>
+              <option value="26,14,15">Tự học</option>
+              <option value="40,20,18">Lớp học</option>
+              <option value="64,30,24">Trình chiếu</option>
+              <option value="96,44,30">Máy chiếu lớn</option>
+            </select></div>
+        </div>
+        <div class="sp-group"><h4>Âm thanh &amp; trình chiếu</h4>
+          <div class="group">Tốc độ đọc <input type="range" id="aRate" min="0.5" max="1.3" step="0.05" value="0.9" aria-label="Tốc độ đọc"></div>
+          <div class="row">
+            <button class="small" id="btnReadAll">🔊 Đọc cả bài</button>
+            <button class="small" id="btnPresent">⛶ Trình chiếu</button>
+          </div>
+        </div>
+      </aside>
     </div>
   </section>
 
@@ -288,6 +344,7 @@
         <option value="0">Mọi cấp HSK</option>
         <option value="1">HSK 1</option><option value="2">HSK 2</option><option value="3">HSK 3</option>
         <option value="4">HSK 4</option><option value="5">HSK 5</option><option value="6">HSK 6</option>
+        <option value="7">HSK 7</option><option value="8">HSK 8</option><option value="9">HSK 9</option>
         <option value="-1">Ngoài HSK</option>
       </select>
       <select id="vStatus">
@@ -353,6 +410,7 @@
         <select id="aLevel">
           <option value="1">HSK 1</option><option value="2">HSK 2</option><option value="3">HSK 3</option>
           <option value="4">HSK 4</option><option value="5">HSK 5</option><option value="6">HSK 6</option>
+          <option value="7">HSK 7</option><option value="8">HSK 8</option><option value="9">HSK 9</option>
         </select>
         <input id="aTags" placeholder="Chủ đề, cách nhau bởi dấu phẩy" style="min-width:180px">
       </div>
@@ -386,7 +444,8 @@
         <input id="cdP" placeholder="pinyin" style="width:110px">
         <input id="cdM" placeholder="nghĩa" class="grow" style="min-width:140px">
         <select id="cdL"><option value="0">Ngoài HSK</option><option value="1">HSK1</option><option value="2">HSK2</option>
-          <option value="3">HSK3</option><option value="4">HSK4</option><option value="5">HSK5</option><option value="6">HSK6</option></select>
+          <option value="3">HSK3</option><option value="4">HSK4</option><option value="5">HSK5</option><option value="6">HSK6</option>
+          <option value="7">HSK7</option><option value="8">HSK8</option><option value="9">HSK9</option></select>
         <input id="cdEx" placeholder="câu ví dụ (tuỳ chọn)" class="grow" style="min-width:160px;font-family:var(--hz-font)">
         <button class="primary small" id="cdAdd">Thêm</button>
       </div>
@@ -784,6 +843,17 @@ function showUpgradeR(t) {
 function getTexts() { return TEXTS; }
 function estMinutes(t) { return Math.max(1, Math.round((t.text.match(CJK_G) || []).length / 180)); }
 const CJK_G = /[〇一-鿿㐀-䶿豈-﫿]/g;
+/* word count = segmented Chinese words (punctuation & non-Chinese excluded); cached per text */
+function wordCount(t) {
+  if (t._wc == null) {
+    let n = 0;
+    for (const line of t.text.split('\n')) for (const tok of segment(line)) if (tok.zh) n++;
+    t._wc = n;
+  }
+  return t._wc;
+}
+/* lowercase + strip Vietnamese diacritics, so "van hoa" finds "Văn hóa" */
+const vnorm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
 
 /* ================= stats ================= */
 function stats() { return read('crh-stats', { days: {}, totalRead: 0, completed: [], seen: [] }); }
@@ -805,6 +875,9 @@ function show(view) {
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.v === view));
   hidePopup();
+  if (view === 'reader') {
+    if (prefs.panel && window.matchMedia('(min-width:1150px)').matches) openSettings();
+  } else closeSettings(true);   // leaving the reader hides the drawer but remembers the choice
   if (view === 'library') renderLibrary();
   if (view === 'vocab') renderVocab();
   if (view === 'cards') renderCardsHome();
@@ -822,12 +895,50 @@ $('lvlChips').addEventListener('click', e => {
   document.querySelectorAll('#lvlChips .chip').forEach(x => x.classList.toggle('active', x === c));
   renderLibrary();
 });
+$('lvlChips').addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('chip')) {
+    e.preventDefault(); e.target.click();
+  }
+});
 $('libSearch').addEventListener('input', () => renderLibrary());
+$('topicSel').addEventListener('change', () => renderLibrary());
+$('btnClearFilters').addEventListener('click', clearFilters);
+function clearFilters() {
+  libLevel = 0; $('libSearch').value = ''; $('topicSel').value = '';
+  document.querySelectorAll('#lvlChips .chip').forEach(x => x.classList.toggle('active', x.dataset.l === '0'));
+  renderLibrary();
+}
+/* topic filter: the standard topics plus every topic actually used in the library */
+const FIXED_TOPICS = ['Gia đình', 'Học tập', 'Công việc', 'Văn hóa', 'Ẩm thực', 'Du lịch',
+                      'Cuộc sống', 'Công nghệ', 'Sức khỏe', 'Xã hội'];
+function buildTopics() {
+  const sel = $('topicSel');
+  const cur = sel.value;
+  const seen = new Map();
+  for (const tp of FIXED_TOPICS) seen.set(vnorm(tp), tp);
+  for (const t of getTexts())
+    for (const g of [...(t.tags || []), t.cat].filter(Boolean)) {
+      const k = vnorm(g);
+      if (!seen.has(k)) seen.set(k, g);
+    }
+  sel.innerHTML = '<option value="">Mọi chủ đề</option>' +
+    [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1], 'vi'))
+      .map(([k, label]) => '<option value="' + escH(k) + '">' + escH(label) + '</option>').join('');
+  if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+}
+function topicOf(t) { return [...(t.tags || []), t.cat].filter(Boolean).map(vnorm); }
 function renderLibrary() {
-  const q = $('libSearch').value.trim().toLowerCase();
+  buildTopics();
+  const q = vnorm($('libSearch').value.trim());
+  const topic = $('topicSel').value;
   const done = stats().completed;
-  const list = getTexts().filter(t => (!libLevel || t.level === libLevel) &&
-    (!q || t.title.toLowerCase().includes(q) || (t.tags || []).join(' ').toLowerCase().includes(q)));
+  const filtered = !!q || !!topic || !!libLevel;
+  $('btnClearFilters').hidden = !filtered;
+  const list = getTexts().filter(t =>
+    (!libLevel || t.level === libLevel) &&
+    (!topic || topicOf(t).includes(topic)) &&
+    (!q || vnorm(t.title).includes(q) || vnorm((t.tags || []).join(' ')).includes(q) ||
+      vnorm(t.cat || '').includes(q) || vnorm(t.tr || '').includes(q)));
   $('libGrid').innerHTML = list.map(t =>
     '<div class="libcard' + (isLocked(t) ? ' locked' : '') + '" data-id="' + t.id + '">' +
       (isLocked(t) ? '<span class="done" style="background:linear-gradient(135deg,#fde68a,#d9a53c);color:#713f12;">👑</span>'
@@ -836,8 +947,16 @@ function renderLibrary() {
       '<h3>' + escH(t.title) + '</h3>' +
       '<div class="meta"><span class="lv lv' + t.level + '">HSK ' + t.level + '</span>' +
       '<span>⏱ ~' + estMinutes(t) + ' phút</span>' +
+      '<span>✍ ' + wordCount(t) + ' từ</span>' +
       (t.tags || []).map(g => '<span class="tag">' + escH(g) + '</span>').join('') + '</div>' +
-    '</div>').join('') || '<p class="mutetext">Chưa có bài đọc nào ở mục này.</p>';
+    '</div>').join('') ||
+    '<div class="panel" style="grid-column:1/-1;text-align:center;padding:26px">' +
+      '<div style="font-size:34px">🔍</div>' +
+      '<p class="mutetext">Không tìm thấy bài đọc nào phù hợp với bộ lọc hiện tại.</p>' +
+      (filtered ? '<button class="small" id="btnClearEmpty">✕ Xóa bộ lọc</button>' : '') +
+    '</div>';
+  const ce = $('btnClearEmpty');
+  if (ce) ce.addEventListener('click', clearFilters);
 }
 $('libGrid').addEventListener('click', e => {
   const c = e.target.closest('.libcard'); if (!c) return;
@@ -871,7 +990,9 @@ function renderReader() {
   if (!t) { $('rBody').innerHTML = '<p class="mutetext">Chọn một bài trong 📚 Thư viện để bắt đầu đọc.</p>'; $('rTitle').textContent = ''; $('rMeta').innerHTML = ''; return; }
   $('rTitle').textContent = t.title;
   $('rMeta').innerHTML = '<span class="lv lv' + t.level + '">HSK ' + t.level + '</span>' +
-    '<span>⏱ ~' + estMinutes(t) + ' phút</span>' + (t.tags || []).map(g => '<span class="tag">' + escH(g) + '</span>').join('');
+    '<span>⏱ ~' + estMinutes(t) + ' phút</span>' +
+    '<span>✍ ' + wordCount(t) + ' từ</span>' +
+    (t.tags || []).map(g => '<span class="tag">' + escH(g) + '</span>').join('');
   const lines = t.text.split('\n');
   const trs = (t.tr || '').split('\n');
   const frag = document.createDocumentFragment();
@@ -1397,7 +1518,7 @@ $('btnImport').addEventListener('change', e => {
 });
 
 /* ================= preferences ================= */
-let prefs = { pyPos: 'above', tr: true, colors: true, tips: true, audioClick: true,
+let prefs = { pyPos: 'above', tr: true, colors: true, tips: true, audioClick: true, panel: false,
   hz: 26, py: 14, trS: 15, rate: 0.9, net: true, voice: '', azKey: '', azRegion: 'southeastasia' };
 function applyPrefs() {
   document.documentElement.style.setProperty('--hz', prefs.hz + 'px');
@@ -1438,6 +1559,26 @@ $('preset').addEventListener('change', () => {
 });
 $('aRate').addEventListener('input', () => { prefs.rate = +$('aRate').value; savePrefs(); });
 
+/* ================= reading-settings drawer ================= */
+function setOpen() { return document.body.classList.contains('set-open'); }
+function openSettings() {
+  document.body.classList.add('set-open');
+  $('setBack').hidden = false;
+  $('setPanel').setAttribute('aria-hidden', 'false');
+  $('btnSettings').setAttribute('aria-expanded', 'true');
+  prefs.panel = true; savePrefs();
+}
+function closeSettings(keepPref) {
+  document.body.classList.remove('set-open');
+  $('setBack').hidden = true;
+  $('setPanel').setAttribute('aria-hidden', 'true');
+  $('btnSettings').setAttribute('aria-expanded', 'false');
+  if (!keepPref) { prefs.panel = false; savePrefs(); }
+}
+$('btnSettings').addEventListener('click', () => setOpen() ? closeSettings() : openSettings());
+$('spClose').addEventListener('click', () => closeSettings());
+$('setBack').addEventListener('click', () => closeSettings());
+
 /* ================= presentation mode ================= */
 const stage = $('readerStage');
 function fsActive() { return !!(document.fullscreenElement || document.webkitFullscreenElement) || stage.classList.contains('fakefs'); }
@@ -1453,7 +1594,10 @@ $('btnPresent').addEventListener('click', async () => {
   catch (e) { stage.classList.add('fakefs'); }
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && stage.classList.contains('fakefs')) exitFs();
+  if (e.key === 'Escape') {
+    if (setOpen()) { closeSettings(); return; }
+    if (stage.classList.contains('fakefs')) exitFs();
+  }
   if (currentView === 'reader' && !(e.target.matches && e.target.matches('input,textarea,select'))) {
     if (e.key === 'ArrowRight') stepText(1);
     if (e.key === 'ArrowLeft') stepText(-1);
