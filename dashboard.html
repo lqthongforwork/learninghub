@@ -1416,8 +1416,11 @@
           .select("id, full_name, email, role, org_id, avatar_url, bio, multi_device, access_start, access_expires, suspended, plan, premium_until")
           .order("created_at"),
         sb.from("courses").select("*").order("sort_order").order("created_at"),
+        // profiles must be joined via the student link explicitly: enrollments has
+        // TWO links to profiles (student_id + teacher_id since migration14), and an
+        // ambiguous join makes the whole query fail → the list showed "No enrollments yet"
         sb.from("enrollments")
-          .select("id, student_id, course_id, profiles(full_name, email), courses(title)")
+          .select("id, student_id, course_id, profiles!student_id(full_name, email), courses(title)")
           .order("created_at"),
         sb.from("announcements").select("*").order("created_at", { ascending: false }),
         sb.from("share_keys").select("*").order("created_at", { ascending: false }),
