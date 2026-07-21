@@ -181,23 +181,43 @@
       background: linear-gradient(135deg, #f4d68a, #d9a53c); border-color: #d9a53c;
       color: #132743; font-weight: 800;
     }
-    .lpx-tgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem; margin-top: 1.6rem; text-align: left; }
-    .lpx-tgrid:empty { display: none; }
-    .lpx-tcard {
-      background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
-      display: flex; flex-direction: column; position: relative;
-      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    /* transformed carousel cards must never widen the page:
+       clip at the main container (clip > hidden: no scroll container) */
+    #lp-main { overflow-x: hidden; overflow-x: clip; }
+
+    /* ---- trial 3D cover-flow carousel ---- */
+    .lpx-tflow { position: relative; margin-top: 1.7rem; }
+    .lpx-tstage {
+      position: relative; height: 384px; margin: 0 auto; max-width: 900px;
+      perspective: 1200px; outline: none; touch-action: pan-y;
     }
-    .lpx-tcard:hover { transform: translateY(-4px); box-shadow: 0 18px 38px -18px rgba(23,38,62,0.4); }
-    .lpx-tcard .thumb { aspect-ratio: 16/9; overflow: hidden; position: relative; }
-    .lpx-tcard .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s ease; }
-    .lpx-tcard:hover .thumb img { transform: scale(1.04); }
-    .lpx-tcard .tb { padding: 0.9rem 1rem 1.1rem; display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
-    .lpx-tcard .cat { font-size: 0.75rem; font-weight: 700; color: var(--accent-ink); text-transform: uppercase; letter-spacing: 0.04em; }
-    .lpx-tcard h3 { margin: 0; font-size: 1.05rem; font-family: var(--serif); }
-    .lpx-tcard p { margin: 0; color: var(--muted); font-size: 0.9rem; flex: 1; }
-    .lpx-tcard .act { margin-top: 0.6rem; }
-    .lpx-tcard .act .btn { text-decoration: none; display: inline-block; }
+    .lpx-trc {
+      position: absolute; top: 0; left: 50%; width: min(340px, 76vw);
+      margin-left: calc(min(340px, 76vw) / -2); height: 100%;
+      background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+      display: flex; flex-direction: column; text-align: left; cursor: pointer;
+      box-shadow: 0 10px 26px -18px rgba(23,38,62,0.4);
+      transition: transform 0.5s cubic-bezier(.22,.8,.3,1), opacity 0.5s ease, box-shadow 0.25s ease;
+      will-change: transform;
+    }
+    .lpx-trc.on { cursor: default; box-shadow: 0 30px 70px -28px rgba(23,38,62,0.65); }
+    .lpx-trc.on:hover { box-shadow: 0 34px 78px -28px rgba(23,38,62,0.72); }
+    .lpx-trc:not(.on):hover { box-shadow: 0 16px 40px -20px rgba(23,38,62,0.55); }
+    .lpx-trc[aria-hidden="true"] { pointer-events: none; }
+    .lpx-trc .thumb { aspect-ratio: 16/9; overflow: hidden; position: relative; flex: none; background: #132743; }
+    .lpx-trc .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .lpx-trc .tb { padding: 0.85rem 1rem 1rem; display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-height: 0; }
+    .lpx-trc .cat { font-size: 0.74rem; font-weight: 800; color: var(--accent-ink); text-transform: uppercase; letter-spacing: 0.04em; }
+    .lpx-trc h3 { margin: 0; font-size: 1.06rem; font-family: var(--serif); }
+    .lpx-trc p { margin: 0; color: var(--muted); font-size: 0.9rem; flex: 1;
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .lpx-trc .act { margin-top: 0.55rem; }
+    .lpx-trc .act .btn { text-decoration: none; display: inline-block; }
+    /* side cards never receive accidental CTA clicks — the card itself activates */
+    .lpx-trc:not(.on) .act a, .lpx-trc:not(.on) .act .lpx-soon { pointer-events: none; }
+    .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+               overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+    @media (max-width: 900px) { .lpx-tstage { height: 372px; } }
 
     /* ============ new: course cover-flow carousel ============ */
     .lpx-cwrap { position: relative; }
@@ -311,9 +331,11 @@
     @media (max-width: 640px) {
       .lpx-stage { height: clamp(230px, 66vw, 300px); }
       .lpx-card { width: 84vw; margin-left: -42vw; }
+      .lpx-tstage { height: calc(44vw + 210px); }
+      .lpx-trc { width: 78vw; margin-left: -39vw; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .lpx-card, .lpx-info, .lpx-tcard, .lpx-acard, .btn, .lp-feat .f, .lpx-tcard .thumb img { transition: none !important; }
+      .lpx-card, .lpx-info, .lpx-trc, .lpx-acard, .btn, .lp-feat .f { transition: none !important; }
       .lpx-skel::after { animation: none; }
     }
   </style>
@@ -583,7 +605,7 @@
       if (t.achieve_lead) { $("achLead").textContent = t.achieve_lead; }
     }
 
-    /* ================= Học thử miễn phí ================= */
+    /* ================= Học thử miễn phí (3D cover-flow) ================= */
     function renderTrial(cfg, items) {
       const sec = document.querySelector('[data-sec="trial"]');
       const t = cfg.trial || {};
@@ -592,24 +614,125 @@
       const p = btnHtml(t.p_label || "Học thử miễn phí", t.p_url, t.p_new !== false, "gold", soon);
       const s = btnHtml(t.s_label || "Nhắn Zalo tư vấn", t.s_url, t.s_new !== false, "ghost", soon);
       const bg = safeUrl(t.image);
+      const n = items.length;
       $("trialBox").innerHTML =
         `<div class="lpx-trial${bg ? " hasimg" : ""}" ${bg ? `style="background-image:url('${esc(bg)}')"` : ""}>
           ${t.badge ? `<span class="lpx-badge">${esc(t.badge)}</span>` : ""}
           <h2>${esc(t.title || "Học thử miễn phí")}</h2>
           ${t.intro ? `<p class="lead">${esc(t.intro)}</p>` : ""}
           <div class="ctas">${t.primary_first === false ? s + p : p + s}</div>
-          <div class="lpx-tgrid">${items.map(it => `
-            <article class="lpx-tcard">
-              ${it.status === "draft" ? '<span class="lpx-draft">DRAFT</span>' : ""}
-              <div class="thumb">${img(it.image_url, it.image_alt || it.title)}</div>
-              <div class="tb">
-                ${it.course_label ? `<span class="cat">${esc(it.course_label)}</span>` : ""}
-                <h3>${esc(it.title)}</h3>
-                ${it.description ? `<p>${esc(it.description)}</p>` : ""}
-                <div class="act">${btnHtml(it.btn_label || "Học thử miễn phí", it.url, it.new_tab !== false, "", soon)}</div>
-              </div>
-            </article>`).join("")}</div>
+          ${n ? `
+          <div class="lpx-tflow">
+            <div class="lpx-tstage" id="tfStage" tabindex="0" role="group" aria-roledescription="băng chuyền"
+                 aria-label="Các khóa học thử miễn phí — dùng phím mũi tên để chuyển">${items.map((it, i) => `
+              <article class="lpx-trc" data-i="${i}" role="group"
+                       aria-label="${esc(it.title)}, mục ${i + 1} trên ${n}">
+                ${it.status === "draft" ? '<span class="lpx-draft">DRAFT</span>' : ""}
+                <div class="thumb">${img(it.image_url, it.image_alt || it.title)}</div>
+                <div class="tb">
+                  ${it.course_label ? `<span class="cat">${esc(it.course_label)}</span>` : ""}
+                  <h3>${esc(it.title)}</h3>
+                  ${it.description ? `<p>${esc(it.description)}</p>` : ""}
+                  <div class="act">${btnHtml(it.btn_label || "Học thử miễn phí", it.url, it.new_tab !== false, "", soon)}</div>
+                </div>
+              </article>`).join("")}
+            </div>
+            ${n > 1 ? `
+            <div class="lpx-nav">
+              <button id="tfPrev" aria-label="Khóa học trước">‹</button>
+              <div class="lpx-dots" id="tfDots" role="tablist" aria-label="Chọn khóa học thử">${items.map((it, i) =>
+                `<button role="tab" data-i="${i}" aria-label="Học thử ${i + 1}: ${esc(it.title)}"></button>`).join("")}</div>
+              <button id="tfNext" aria-label="Khóa học tiếp theo">›</button>
+              ${cfg.autoplay ? '<button id="tfPause" aria-label="Tạm dừng tự chạy" aria-pressed="false">⏸</button>' : ""}
+            </div>` : ""}
+            <span class="sr-only" id="tfLive" aria-live="polite"></span>
+          </div>` : ""}
         </div>`;
+      if (n) trialFlow(items, cfg);
+    }
+
+    function trialFlow(items, cfg) {
+      const n = items.length;
+      const stage = $("tfStage"), cards = [...stage.children];
+      const dots = n > 1 ? [...$("tfDots").children] : [];
+      let idx = 0, wheelLock = 0, autoplayTimer = null;
+      const autoplayMs = Math.min(15000, Math.max(4000, +cfg.autoplay_ms || 6000));
+      let autoplayOn = n > 1 && !!cfg.autoplay && !REDUCED;
+
+      function layout() {
+        cards.forEach((card, i) => {
+          let o = i - idx;
+          if (o > n / 2) o -= n;                       /* shortest path around the ring */
+          if (o < -n / 2) o += n;
+          const abs = Math.abs(o);
+          const vis = abs <= 1 || (abs <= 2 && n > 3); /* previous · active · next (+1 depth layer) */
+          card.style.transform = REDUCED
+            ? `translateX(${o * 103}%)`
+            : `translateX(${o * 62}%) scale(${o === 0 ? 1 : Math.max(0.78, 0.86 - (abs - 1) * 0.08)})
+               rotateY(${o === 0 ? 0 : (o < 0 ? 28 : -28)}deg)`;
+          card.style.zIndex = 10 - abs;
+          card.style.opacity = vis ? String(o === 0 ? 1 : Math.max(0.35, 0.72 - (abs - 1) * 0.3)) : "0";
+          card.classList.toggle("on", o === 0);
+          card.setAttribute("aria-hidden", vis ? "false" : "true");
+          /* focus stays on reachable content only: side/hidden cards drop out of the tab order */
+          card.querySelectorAll("a, button").forEach(el => { el.tabIndex = o === 0 ? 0 : -1; });
+          if (dots[i]) dots[i].classList.toggle("on", i === idx);
+        });
+        $("tfLive").textContent = items[idx].title + ", mục " + (idx + 1) + " trên " + n;
+      }
+      const go = d => { idx = (idx + d + n) % n; layout(); };
+      function stopAuto() { if (autoplayTimer) { clearInterval(autoplayTimer); autoplayTimer = null; } }
+      function startAuto() { stopAuto(); if (autoplayOn && document.visibilityState === "visible") autoplayTimer = setInterval(() => go(1), autoplayMs); }
+      /* manual navigation must not be followed by an immediate autoplay jump */
+      function userTouched() { stopAuto(); if (autoplayOn) setTimeout(startAuto, autoplayMs * 2); }
+
+      cards.forEach(card => card.addEventListener("click", e => {
+        if (e.target.closest("a")) return;             /* CTA clicks never rotate the carousel */
+        const i = +card.dataset.i;
+        if (i !== idx) { userTouched(); idx = i; layout(); }
+      }));
+      if (n > 1) {
+        $("tfPrev").addEventListener("click", () => { userTouched(); go(-1); });
+        $("tfNext").addEventListener("click", () => { userTouched(); go(1); });
+        dots.forEach(d => d.addEventListener("click", () => { userTouched(); idx = +d.dataset.i; layout(); }));
+        stage.addEventListener("keydown", e => {
+          if (e.key === "ArrowLeft") { e.preventDefault(); userTouched(); go(-1); }
+          if (e.key === "ArrowRight") { e.preventDefault(); userTouched(); go(1); }
+        });
+        /* wheel: intentional horizontal gestures only, one card per gesture;
+           vertical scrolling is never intercepted, so the page scrolls naturally */
+        stage.addEventListener("wheel", e => {
+          if (Math.abs(e.deltaX) <= Math.abs(e.deltaY) || Math.abs(e.deltaX) < 18) return;
+          e.preventDefault();
+          const now = Date.now();
+          if (now - wheelLock < 500) return;
+          wheelLock = now;
+          userTouched(); go(e.deltaX > 0 ? 1 : -1);
+        }, { passive: false });
+        let px = null;
+        stage.addEventListener("pointerdown", e => { px = e.clientX; });
+        stage.addEventListener("pointerup", e => {
+          if (px === null) return;
+          const dx = e.clientX - px; px = null;
+          if (Math.abs(dx) > 40) { userTouched(); go(dx < 0 ? 1 : -1); }
+        });
+        const pauseBtn = $("tfPause");
+        if (pauseBtn) pauseBtn.addEventListener("click", () => {
+          autoplayOn = !autoplayOn;
+          pauseBtn.textContent = autoplayOn ? "⏸" : "▶";
+          pauseBtn.setAttribute("aria-pressed", String(!autoplayOn));
+          autoplayOn ? startAuto() : stopAuto();
+        });
+        stage.addEventListener("pointerenter", stopAuto);
+        stage.addEventListener("pointerleave", () => { if (autoplayOn) startAuto(); });
+        stage.addEventListener("focusin", stopAuto);   /* keyboard users are never moved mid-read */
+        stage.addEventListener("focusout", () => { if (autoplayOn) startAuto(); });
+        if (window.__tfVis) document.removeEventListener("visibilitychange", window.__tfVis);
+        window.__tfVis = () => { document.visibilityState === "visible" ? startAuto() : stopAuto(); };
+        document.addEventListener("visibilitychange", window.__tfVis);
+      }
+      layout();
+      startAuto();
     }
 
     /* ================= course cover-flow carousel ================= */
