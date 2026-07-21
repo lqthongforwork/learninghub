@@ -77,10 +77,12 @@
       background: #fbf7ec; border-top: 1px solid #eadfc4; border-bottom: 1px solid #eadfc4;
       text-align: center; padding: clamp(2.4rem, 7vw, 3.6rem) 1.25rem;
     }
+    [data-theme="dark"] .lp-quote { background: #1c2536; border-color: #2c3850; }
     .lp-quote .vi {
       font-family: var(--serif); font-style: italic; font-weight: 700;
       font-size: clamp(1.3rem, 3.8vw, 1.9rem); color: #8a5f27; max-width: 760px; margin: 0 auto;
     }
+    [data-theme="dark"] .lp-quote .vi { color: #e3b95c; }
     .lp-quote .en { margin-top: 0.9rem; font-size: clamp(0.95rem, 2.4vw, 1.1rem); color: var(--muted); font-style: italic; }
     .lp-quote .zh { margin-top: 0.45rem; font-size: clamp(1rem, 2.6vw, 1.2rem); color: var(--ink); }
     .lp-teacher {
@@ -100,20 +102,13 @@
     }
     .lp-teacher .info { flex: 1; min-width: 260px; }
     .lp-teacher h3 { font-family: var(--serif); font-size: 1.45rem; margin: 0 0 0.2rem; }
-    .lp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
-    .lp-course {
-      background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-      padding: 1.4rem 1.3rem; transition: transform 0.18s ease, box-shadow 0.18s ease;
-    }
-    .lp-course:hover { transform: translateY(-4px); box-shadow: 0 18px 38px -18px rgba(23,38,62,0.4); }
-    .lp-course .em { font-size: 2rem; }
-    .lp-course h3 { font-family: var(--serif); font-size: 1.15rem; margin: 0.5rem 0 0.35rem; }
-    .lp-course p { color: var(--muted); font-size: 0.92rem; margin: 0; }
     .lp-feat { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0.9rem; }
     .lp-feat .f {
       background: var(--card); border: 1px solid var(--line); border-radius: 12px;
       padding: 1rem 1.1rem; font-size: 0.94rem;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
     }
+    .lp-feat .f:hover { transform: translateY(-3px); box-shadow: 0 14px 30px -18px rgba(23,38,62,0.4); }
     .lp-feat .f b { display: block; margin-bottom: 0.2rem; }
     .lp-contact {
       background: linear-gradient(135deg, #1e4f8f, #132743); color: #fff;
@@ -131,6 +126,196 @@
     .lp-contact a.fb { background: transparent; border-color: rgba(255,255,255,0.55); }
     .lp-footer { text-align: center; color: var(--muted); font-size: 0.85rem; padding: 2rem 1rem 2.6rem; }
     .lp-footer a { color: var(--accent-ink); }
+
+    /* ============ new: shared bits ============ */
+    .btn, .lpx-btn { transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
+      outline: 3px solid #4f8fdd; outline-offset: 2px; border-radius: 6px;
+    }
+    .lpx-badge {
+      display: inline-block; background: linear-gradient(135deg, #f4d68a, #d9a53c);
+      color: #5d3a06; font-weight: 800; font-size: 0.78rem; border-radius: 999px;
+      padding: 0.25rem 0.85rem; margin-bottom: 0.7rem; letter-spacing: 0.02em;
+    }
+    .lpx-soon {
+      display: inline-block; border: 1px dashed var(--line); color: var(--muted);
+      border-radius: 10px; padding: 0.55rem 1.1rem; font-weight: 600; font-size: 0.92rem;
+      cursor: not-allowed; user-select: none;
+    }
+    .lpx-skel { border-radius: 12px; background: var(--line); position: relative; overflow: hidden; min-height: 120px; }
+    .lpx-skel::after {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,0.35) 50%, transparent 70%);
+      animation: lpxshine 1.4s infinite;
+    }
+    @keyframes lpxshine { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+    .lpx-draft {
+      position: absolute; top: 8px; left: 8px; z-index: 3; background: #c05600; color: #fff;
+      font-size: 0.7rem; font-weight: 800; border-radius: 6px; padding: 2px 8px;
+    }
+    .lpx-ph { /* branded placeholder for missing images */
+      display: grid; place-items: center; width: 100%; height: 100%;
+      background: linear-gradient(135deg, #1e4f8f, #132743); color: #e3b95c;
+      font-family: var(--serif); font-weight: 700; text-align: center; padding: 0.6rem;
+    }
+    .lpx-ph small { color: #cfe0f5; font-family: inherit; }
+
+    /* ============ new: Học thử miễn phí ============ */
+    .lpx-trial {
+      background: var(--card); border: 1px solid var(--line); border-radius: 18px;
+      padding: clamp(1.4rem, 4.5vw, 2.4rem); text-align: center;
+      box-shadow: 0 18px 50px -30px rgba(23,38,62,0.45);
+      background-size: cover; background-position: center; position: relative; overflow: hidden;
+    }
+    .lpx-trial.hasimg::before { content: ""; position: absolute; inset: 0; background: rgba(19,39,67,0.78); }
+    .lpx-trial.hasimg, .lpx-trial.hasimg h2 { color: #fff; }
+    .lpx-trial.hasimg .lead { color: #dbe6f5; }
+    .lpx-trial > * { position: relative; }
+    .lpx-trial h2 { font-size: clamp(1.45rem, 3.8vw, 2rem); margin: 0 0 0.4rem; }
+    .lpx-trial .lead { color: var(--muted); max-width: 620px; margin: 0 auto 1.2rem; }
+    .lpx-trial .ctas { display: flex; gap: 0.7rem; justify-content: center; flex-wrap: wrap; margin-bottom: 0.4rem; }
+    .lpx-trial .ctas .btn { text-decoration: none; }
+    .lpx-trial .ctas .gold {
+      background: linear-gradient(135deg, #f4d68a, #d9a53c); border-color: #d9a53c;
+      color: #132743; font-weight: 800;
+    }
+    .lpx-tgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem; margin-top: 1.6rem; text-align: left; }
+    .lpx-tgrid:empty { display: none; }
+    .lpx-tcard {
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+      display: flex; flex-direction: column; position: relative;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+    .lpx-tcard:hover { transform: translateY(-4px); box-shadow: 0 18px 38px -18px rgba(23,38,62,0.4); }
+    .lpx-tcard .thumb { aspect-ratio: 16/9; overflow: hidden; position: relative; }
+    .lpx-tcard .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s ease; }
+    .lpx-tcard:hover .thumb img { transform: scale(1.04); }
+    .lpx-tcard .tb { padding: 0.9rem 1rem 1.1rem; display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
+    .lpx-tcard .cat { font-size: 0.75rem; font-weight: 700; color: var(--accent-ink); text-transform: uppercase; letter-spacing: 0.04em; }
+    .lpx-tcard h3 { margin: 0; font-size: 1.05rem; font-family: var(--serif); }
+    .lpx-tcard p { margin: 0; color: var(--muted); font-size: 0.9rem; flex: 1; }
+    .lpx-tcard .act { margin-top: 0.6rem; }
+    .lpx-tcard .act .btn { text-decoration: none; display: inline-block; }
+
+    /* ============ new: course cover-flow carousel ============ */
+    .lpx-cwrap { position: relative; }
+    .lpx-stage {
+      position: relative; height: clamp(240px, 44vw, 330px); margin: 0 auto;
+      perspective: 1100px; outline: none; touch-action: pan-y;
+    }
+    .lpx-card {
+      position: absolute; top: 0; left: 50%; width: min(420px, 78vw);
+      margin-left: calc(min(420px, 78vw) / -2);
+      border-radius: 16px; overflow: hidden; background: var(--card);
+      border: 1px solid var(--line); box-shadow: 0 24px 60px -30px rgba(23,38,62,0.55);
+      transition: transform 0.45s cubic-bezier(.22,.8,.3,1), opacity 0.45s ease, filter 0.45s ease;
+      cursor: pointer; will-change: transform;
+    }
+    .lpx-card .cov { aspect-ratio: 16/9; position: relative; background: #132743; }
+    .lpx-card .cov img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .lpx-card .strip {
+      padding: 0.7rem 1rem; display: flex; align-items: center; gap: 0.5rem; justify-content: space-between;
+    }
+    .lpx-card .strip h3 { margin: 0; font-family: var(--serif); font-size: 1.02rem; }
+    .lpx-card .strip .tag { font-size: 0.72rem; color: var(--muted); font-weight: 700; text-transform: uppercase; }
+    .lpx-card[aria-hidden="true"] { pointer-events: none; }
+    .lpx-nav {
+      display: flex; align-items: center; justify-content: center; gap: 0.9rem; margin-top: 1.1rem;
+    }
+    .lpx-nav button {
+      width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line);
+      background: var(--card); color: var(--ink); font-size: 1.05rem; cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .lpx-nav button:hover { transform: translateY(-2px); box-shadow: 0 10px 20px -12px rgba(23,38,62,0.5); }
+    .lpx-dots { display: flex; gap: 0.45rem; }
+    .lpx-dots button {
+      width: 10px; height: 10px; min-height: 10px; max-height: 10px; min-width: 10px;
+      padding: 0; line-height: 0; font-size: 0; flex: none;
+      border-radius: 50%; border: 1px solid var(--line);
+      background: var(--line); cursor: pointer; transition: background 0.2s, transform 0.2s;
+    }
+    .lpx-dots button.on { background: var(--accent-ink); transform: scale(1.25); border-color: var(--accent-ink); }
+    .lpx-info {
+      max-width: 760px; margin: 1.6rem auto 0; background: var(--card); border: 1px solid var(--line);
+      border-radius: 16px; padding: clamp(1.1rem, 3.5vw, 1.8rem);
+      opacity: 1; transform: none; transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    .lpx-info.swap { opacity: 0; transform: translateY(8px); }
+    .lpx-info h3 { margin: 0 0 0.2rem; font-family: var(--serif); font-size: 1.3rem; }
+    .lpx-info .tagline { color: var(--accent-ink); font-weight: 600; margin: 0 0 0.7rem; }
+    .lpx-info .meta { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; margin: 0 0 0.8rem; font-size: 0.85rem; color: var(--muted); }
+    .lpx-info .meta b { color: var(--ink); }
+    .lpx-info .desc { margin: 0 0 0.8rem; font-size: 0.95rem; }
+    .lpx-info ul { margin: 0 0 0.9rem; padding-left: 1.2rem; font-size: 0.92rem; }
+    .lpx-info ul li { margin-bottom: 0.2rem; }
+    .lpx-info .price { font-weight: 800; color: var(--accent-ink); margin: 0 0 0.9rem; }
+    .lpx-info .ctas { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    .lpx-info .ctas .btn { text-decoration: none; }
+    .lpx-info .ctas .gold {
+      background: linear-gradient(135deg, #f4d68a, #d9a53c); border-color: #d9a53c;
+      color: #132743; font-weight: 800;
+    }
+
+    /* ============ new: achievements / feedback / gallery ============ */
+    .lpx-filters { display: flex; gap: 0.45rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1.3rem; }
+    .lpx-filters button {
+      border: 1px solid var(--line); background: var(--card); color: var(--ink);
+      border-radius: 999px; padding: 0.4rem 0.95rem; font-size: 0.86rem; cursor: pointer;
+      transition: background 0.15s, color 0.15s, transform 0.15s;
+    }
+    .lpx-filters button:hover { transform: translateY(-1px); }
+    .lpx-filters button.on { background: var(--accent-ink); border-color: var(--accent-ink); color: #fff; font-weight: 700; }
+    .lpx-atrack {
+      display: flex; gap: 1rem; overflow-x: auto; scroll-snap-type: x mandatory;
+      padding: 0.3rem 0.2rem 1rem; scrollbar-width: thin; outline: none;
+    }
+    .lpx-acard {
+      flex: 0 0 min(300px, 82vw); scroll-snap-align: center; position: relative;
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+      transition: transform 0.18s ease, box-shadow 0.18s ease; cursor: pointer;
+    }
+    .lpx-acard:hover { transform: translateY(-4px); box-shadow: 0 18px 38px -18px rgba(23,38,62,0.4); }
+    .lpx-acard .im { aspect-ratio: 4/3; background: var(--line); position: relative; overflow: hidden; }
+    .lpx-acard .im img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .lpx-acard .ab { padding: 0.8rem 0.95rem 1rem; }
+    .lpx-acard .cat { font-size: 0.72rem; font-weight: 800; color: var(--accent-ink); text-transform: uppercase; letter-spacing: 0.04em; }
+    .lpx-acard h3 { margin: 0.2rem 0 0.25rem; font-size: 1rem; font-family: var(--serif); }
+    .lpx-acard p { margin: 0; color: var(--muted); font-size: 0.87rem; }
+    .lpx-acard .fbtext { font-size: 0.92rem; color: var(--ink); font-style: italic; }
+    .lpx-acard .who { margin-top: 0.55rem; font-size: 0.82rem; color: var(--muted); font-weight: 600; }
+
+    /* lightbox */
+    .lpx-lb {
+      position: fixed; inset: 0; z-index: 300; background: rgba(10,16,28,0.9);
+      display: none; align-items: center; justify-content: center; padding: 1rem;
+    }
+    .lpx-lb.open { display: flex; }
+    .lpx-lb figure { margin: 0; max-width: min(960px, 94vw); max-height: 92vh; display: flex; flex-direction: column; }
+    .lpx-lb img { max-width: 100%; max-height: 78vh; object-fit: contain; border-radius: 10px; background: #0a101c; }
+    .lpx-lb figcaption { color: #dbe6f5; text-align: center; padding: 0.7rem 0.5rem 0; font-size: 0.92rem; }
+    .lpx-lb .x {
+      position: absolute; top: 14px; right: 16px; width: 42px; height: 42px; border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.4); background: rgba(255,255,255,0.08); color: #fff;
+      font-size: 1.1rem; cursor: pointer;
+    }
+    .lpx-lb .pn {
+      position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px;
+      border-radius: 50%; border: 1px solid rgba(255,255,255,0.4); background: rgba(255,255,255,0.08);
+      color: #fff; font-size: 1.1rem; cursor: pointer;
+    }
+    .lpx-lb .prev { left: 14px; } .lpx-lb .next { right: 14px; }
+
+    @media (max-width: 640px) {
+      .lpx-stage { height: clamp(230px, 66vw, 300px); }
+      .lpx-card { width: 84vw; margin-left: -42vw; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .lpx-card, .lpx-info, .lpx-tcard, .lpx-acard, .btn, .lp-feat .f, .lpx-tcard .thumb img { transition: none !important; }
+      .lpx-skel::after { animation: none; }
+    }
   </style>
 </head>
 <body>
@@ -151,7 +336,7 @@
       có quiz, bài tập, theo dõi thời gian học và chứng nhận khi hoàn thành khóa.</p>
     <div class="lp-cta">
       <a id="hero-start" class="btn gold" href="login.html">Bắt đầu học →</a>
-      <a class="btn ghost" href="#lien-he" style="color:#fff; border-color:rgba(255,255,255,0.5);">Học thử miễn phí</a>
+      <a class="btn ghost" href="#hoc-thu" data-hit="cta-trial" style="color:#fff; border-color:rgba(255,255,255,0.5);">Học thử miễn phí</a>
     </div>
     <div class="lp-chips">
       <span>🀄 Tiếng Trung HSK 3.0</span>
@@ -161,94 +346,95 @@
     </div>
   </section>
 
-  <!-- ================= QUOTE ================= -->
-  <section class="lp-quote">
-    <p class="vi">“Biết thêm một ngôn ngữ là sống thêm một cuộc đời.”</p>
-    <p class="en">“One who learns a language lives two lives.”</p>
-    <p class="zh">「学会一门语言，就是多活一个人生。」</p>
-  </section>
+  <!-- Sections below are reordered / hidden by the owner's Landing Page settings -->
+  <main id="lp-main">
 
-  <!-- ================= TEACHER ================= -->
-  <section class="lp-section" id="giao-vien">
-    <h2>Giáo viên của bạn</h2>
-    <p class="lead">Một giáo viên trực tiếp thiết kế, giảng dạy và đồng hành trong toàn bộ lộ trình.</p>
-    <div class="lp-teacher">
-      <img class="photo" src="profile.jpg" alt="Thầy Lê Quốc Thông" loading="lazy" decoding="async"
-           onerror="this.style.display='none'; document.getElementById('photo-fb').style.display='grid';" />
-      <div class="photo-fb" id="photo-fb">T</div>
-      <div class="info">
-        <h3>Thầy Lê Quốc Thông</h3>
-        <p style="color:var(--muted); margin:0 0 0.7rem;">Giáo viên tiếng Anh &amp; tiếng Trung</p>
-        <div class="creds" style="margin:0 0 0.9rem;">
-          <span class="cred-badge">🎓 Master of TESOL</span>
-          <span class="cred-badge">VSTEP C1 (9.0)</span>
-          <span class="cred-badge">IELTS 7.5</span>
-          <span class="cred-badge">HSK 5 (276/300)</span>
+    <!-- ================= HỌC THỬ MIỄN PHÍ (dynamic) ================= -->
+    <section class="lp-section" data-sec="trial" id="hoc-thu">
+      <div id="trialBox"><div class="lpx-skel" style="min-height:180px;" aria-hidden="true"></div></div>
+    </section>
+
+    <!-- ================= COURSE CAROUSEL (dynamic) ================= -->
+    <section class="lp-section" data-sec="courses" id="khoa-hoc" style="padding-top:0;">
+      <h2 id="coursesTitle">Các khóa học</h2>
+      <p class="lead" id="coursesLead">Chọn một khóa để xem lộ trình, nội dung và cách đăng ký.</p>
+      <div id="courseBox"><div class="lpx-skel" style="min-height:260px;" aria-hidden="true"></div></div>
+    </section>
+
+    <!-- ================= TEACHER ================= -->
+    <section class="lp-section" data-sec="teacher" id="giao-vien" style="padding-top:0;">
+      <h2>Giáo viên của bạn</h2>
+      <p class="lead">Một giáo viên trực tiếp thiết kế, giảng dạy và đồng hành trong toàn bộ lộ trình.</p>
+      <div class="lp-teacher">
+        <img class="photo" src="profile.jpg" alt="Thầy Lê Quốc Thông" loading="lazy" decoding="async"
+             onerror="this.style.display='none'; document.getElementById('photo-fb').style.display='grid';" />
+        <div class="photo-fb" id="photo-fb">T</div>
+        <div class="info">
+          <h3>Thầy Lê Quốc Thông</h3>
+          <p style="color:var(--muted); margin:0 0 0.7rem;">Giáo viên tiếng Anh &amp; tiếng Trung</p>
+          <div class="creds" style="margin:0 0 0.9rem;">
+            <span class="cred-badge">🎓 Master of TESOL</span>
+            <span class="cred-badge">VSTEP C1 (9.0)</span>
+            <span class="cred-badge">IELTS 7.5</span>
+            <span class="cred-badge">HSK 5 (276/300)</span>
+          </div>
+          <p style="font-size:0.95rem; margin:0 0 1rem;">Phương châm của lớp học: <b>học có lộ trình — tiến bộ đo được</b>.
+            Mỗi học viên biết chính xác mình đang ở đâu, cần học gì tiếp theo, và đã tiến bộ bao nhiêu sau mỗi tuần.</p>
+          <a class="btn" href="https://zalo.me/0961923983" target="_blank" rel="noopener"
+             style="text-decoration:none; display:inline-block; margin-right:0.5rem;">💬 Zalo: 0961 923 983</a>
+          <a class="btn ghost" href="https://www.facebook.com/lqt248" target="_blank" rel="noopener"
+             style="text-decoration:none; display:inline-block;">👤 Facebook</a>
         </div>
-        <p style="font-size:0.95rem; margin:0 0 1rem;">Phương châm của lớp học: <b>học có lộ trình — tiến bộ đo được</b>.
-          Mỗi học viên biết chính xác mình đang ở đâu, cần học gì tiếp theo, và đã tiến bộ bao nhiêu sau mỗi tuần.</p>
-        <a class="btn" href="https://zalo.me/0961923983" target="_blank" rel="noopener"
-           style="text-decoration:none; display:inline-block; margin-right:0.5rem;">💬 Zalo: 0961 923 983</a>
-        <a class="btn ghost" href="https://www.facebook.com/lqt248" target="_blank" rel="noopener"
-           style="text-decoration:none; display:inline-block;">👤 Facebook</a>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- ================= COURSES ================= -->
-  <section class="lp-section" id="khoa-hoc" style="padding-top:0;">
-    <h2>Các khóa học</h2>
-    <p class="lead">Chương trình được chia thành bài học nhỏ theo trình tự — hoàn thành đến đâu, mở khóa đến đó.</p>
-    <div class="lp-grid">
-      <div class="lp-course">
-        <span class="em">🀄</span>
-        <h3>Tiếng Trung HSK (chuẩn 3.0)</h3>
-        <p>Lộ trình từ HSK 1 theo chuẩn mới nhất, kèm quiz từ vựng, luyện viết chữ Hán và bài tập sau mỗi bài học.</p>
-      </div>
-      <div class="lp-course">
-        <span class="em">🎓</span>
-        <h3>Tiếng Anh IELTS &amp; VSTEP</h3>
-        <p>Luyện thi theo lộ trình cùng giáo viên đạt IELTS 7.5 và VSTEP C1 — chiến lược làm bài, chấm và nhận xét chi tiết.</p>
-      </div>
-      <div class="lp-course">
-        <span class="em">💬</span>
-        <h3>Tiếng Anh nền tảng &amp; giao tiếp</h3>
-        <p>Xây nền phát âm, từ vựng và phản xạ giao tiếp cho người mới bắt đầu hoặc mất gốc.</p>
-      </div>
-    </div>
-  </section>
+    <!-- ================= ACHIEVEMENTS & FEEDBACK (dynamic) ================= -->
+    <section class="lp-section" data-sec="achieve" id="thanh-tuu" style="padding-top:0;" hidden>
+      <h2 id="achTitle">Thành tựu &amp; Cảm nhận của học viên</h2>
+      <p class="lead" id="achLead">Chứng chỉ, kết quả và phản hồi thật từ lớp học.</p>
+      <div id="achBox"></div>
+    </section>
 
-  <!-- ================= FEATURES ================= -->
-  <section class="lp-section" id="tinh-nang" style="padding-top:0;">
-    <h2>Học trên nền tảng hiện đại</h2>
-    <p class="lead">Không chỉ là tài liệu — cả lớp học được số hóa.</p>
-    <div class="lp-feat">
-      <div class="f"><b>🗺️ Lộ trình rõ ràng</b>Mỗi khóa là một chuỗi bài học theo thứ tự, biết rõ bài tiếp theo cần học.</div>
-      <div class="f"><b>📊 Tiến độ &amp; chuỗi ngày học</b>Thời gian học, điểm quiz, huy hiệu và chuỗi ngày học liên tục — như Duolingo.</div>
-      <div class="f"><b>📝 Quiz &amp; bài tập có chấm</b>Làm bài ngay trên nền tảng, giáo viên chấm và nhận xét từng bài.</div>
-      <div class="f"><b>🎓 Chứng nhận hoàn thành</b>Hoàn thành 100% khóa học nhận chứng nhận mang tên bạn, in được ra giấy.</div>
-      <div class="f"><b>📲 Như một ứng dụng</b>Cài lên màn hình chính điện thoại, mở toàn màn hình, không cần App Store.</div>
-      <div class="f"><b>💬 Hỏi đáp với giáo viên</b>Mỗi khóa có mục thảo luận riêng — hỏi bài và được trả lời trực tiếp.</div>
-    </div>
-  </section>
+    <!-- ================= FEATURES ================= -->
+    <section class="lp-section" data-sec="feats" id="tinh-nang" style="padding-top:0;">
+      <h2>Học trên nền tảng hiện đại</h2>
+      <p class="lead">Không chỉ là tài liệu — cả lớp học được số hóa.</p>
+      <div class="lp-feat">
+        <div class="f"><b>🗺️ Lộ trình rõ ràng</b>Mỗi khóa là một chuỗi bài học theo thứ tự, biết rõ bài tiếp theo cần học.</div>
+        <div class="f"><b>📊 Tiến độ &amp; chuỗi ngày học</b>Thời gian học, điểm quiz, huy hiệu và chuỗi ngày học liên tục — như Duolingo.</div>
+        <div class="f"><b>📝 Quiz &amp; bài tập có chấm</b>Làm bài ngay trên nền tảng, giáo viên chấm và nhận xét từng bài.</div>
+        <div class="f"><b>🎓 Chứng nhận hoàn thành</b>Hoàn thành 100% khóa học nhận chứng nhận mang tên bạn, in được ra giấy.</div>
+        <div class="f"><b>📲 Như một ứng dụng</b>Cài lên màn hình chính điện thoại, mở toàn màn hình, không cần App Store.</div>
+        <div class="f"><b>💬 Hỏi đáp với giáo viên</b>Mỗi khóa có mục thảo luận riêng — hỏi bài và được trả lời trực tiếp.</div>
+      </div>
+    </section>
 
-  <!-- ================= CONTACT / PRICING ================= -->
-  <section class="lp-section" id="lien-he" style="padding-top:0;">
-    <div class="lp-contact">
-      <div style="flex:1; min-width:260px;">
-        <h2>Học phí &amp; đăng ký học thử</h2>
-        <p>Liên hệ để biết thêm thông tin về học phí và nhận <b>buổi học thử miễn phí</b>.
-          Nhắn tin Zalo hoặc quét mã QR bên cạnh — thầy sẽ phản hồi trong ngày.</p>
-        <a class="btn zalo" href="https://zalo.me/0961923983" target="_blank" rel="noopener">💬 Nhắn Zalo: 0961 923 983</a>
-        <a class="btn fb" href="https://www.facebook.com/lqt248" target="_blank" rel="noopener">👤 Facebook: lqt248</a>
+    <!-- ================= QUOTE ================= -->
+    <section class="lp-quote" data-sec="quote">
+      <p class="vi">“Biết thêm một ngôn ngữ là sống thêm một cuộc đời.”</p>
+      <p class="en">“One who learns a language lives two lives.”</p>
+      <p class="zh">「学会一门语言，就是多活一个人生。」</p>
+    </section>
+
+    <!-- ================= CONTACT / PRICING ================= -->
+    <section class="lp-section" data-sec="contact" id="lien-he">
+      <div class="lp-contact">
+        <div style="flex:1; min-width:260px;">
+          <h2>Học phí &amp; đăng ký học thử</h2>
+          <p>Liên hệ để biết thêm thông tin về học phí và nhận <b>buổi học thử miễn phí</b>.
+            Nhắn tin Zalo hoặc quét mã QR bên cạnh — thầy sẽ phản hồi trong ngày.</p>
+          <a class="btn zalo" href="https://zalo.me/0961923983" target="_blank" rel="noopener">💬 Nhắn Zalo: 0961 923 983</a>
+          <a class="btn fb" href="https://www.facebook.com/lqt248" target="_blank" rel="noopener">👤 Facebook: lqt248</a>
+        </div>
+        <div class="qr">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https%3A%2F%2Fzalo.me%2F0961923983"
+               alt="Zalo QR" width="150" height="150" loading="lazy" decoding="async" />
+          <span class="kind">Quét để mở Zalo</span>
+        </div>
       </div>
-      <div class="qr">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https%3A%2F%2Fzalo.me%2F0961923983"
-             alt="Zalo QR" width="150" height="150" loading="lazy" decoding="async" />
-        <span class="kind">Quét để mở Zalo</span>
-      </div>
-    </div>
-  </section>
+    </section>
+
+  </main>
 
   <footer class="lp-footer">
     © 2026 Learning Ecology · Thầy Lê Quốc Thông ·
@@ -257,11 +443,20 @@
     <br /><a href="login.html">Đăng nhập dành cho học viên</a>
   </footer>
 
+  <!-- lightbox -->
+  <div class="lpx-lb" id="lpxLb" role="dialog" aria-modal="true" aria-label="Xem ảnh lớn">
+    <button class="x" id="lbX" aria-label="Đóng">✕</button>
+    <button class="pn prev" id="lbPrev" aria-label="Ảnh trước">‹</button>
+    <button class="pn next" id="lbNext" aria-label="Ảnh sau">›</button>
+    <figure><img id="lbImg" alt="" /><figcaption id="lbCap"></figcaption></figure>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script>
-    // Anonymous visit counter — writes one row per visit into YOUR
-    // Supabase (owner-only stats). No cookies, no third parties.
+    // Anonymous visit counter — one row per visit into YOUR Supabase
+    // (owner-only stats). No cookies, no third parties. Uses event
+    // delegation so buttons rendered later are counted too.
     (function () {
       try {
         const src = new URLSearchParams(location.search).get("src")
@@ -272,12 +467,15 @@
           sessionStorage.setItem("le_seen", "1");
           hit("home");
         }
-        document.querySelectorAll('a[href="login.html"]').forEach(a =>
-          a.addEventListener("click", () => hit("cta-login")));
-        document.querySelectorAll('a[href="#lien-he"]').forEach(a =>
-          a.addEventListener("click", () => hit("cta-trial")));
-        document.querySelectorAll('a[href^="https://zalo.me"]').forEach(a =>
-          a.addEventListener("click", () => hit("cta-zalo")));
+        document.addEventListener("click", e => {
+          const a = e.target.closest && e.target.closest("a");
+          if (!a) return;
+          const href = a.getAttribute("href") || "";
+          if (href === "login.html") hit("cta-login");
+          else if (a.dataset.hit) hit(a.dataset.hit);
+          else if (href === "#lien-he" || href === "#hoc-thu") hit("cta-trial");
+          else if (href.startsWith("https://zalo.me")) hit("cta-zalo");
+        });
       } catch (e) { /* stats must never break the page */ }
     })();
 
@@ -305,6 +503,358 @@
         b.textContent = next === "dark" ? "☀️" : "🌙";
       });
     })();
+  </script>
+
+  <script>
+  /* ================= landing content: loaded from the database =================
+     Everything below reads PUBLISHED records that the owner manages in
+     Dashboard → Landing Page. If the database is unreachable or migration35
+     has not run, the page falls back to a minimal static course list and
+     hides the dynamic sections — it never shows broken containers. */
+  (function () {
+    "use strict";
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    /* only allow safe link targets — anything else counts as "no link yet" */
+    const safeUrl = u => {
+      u = String(u || "").trim();
+      return /^(https?:\/\/|\/|#|[a-z0-9_-]+\.html)/i.test(u) ? u : "";
+    };
+    const FOCALS = { center: "50% 50%", top: "50% 0%", bottom: "50% 100%", left: "0% 50%", right: "100% 50%" };
+    const focal = f => FOCALS[f] || (/^\d+% \d+%$/.test(String(f || "")) ? f : "50% 50%");
+    const ph = (title, sub) =>
+      `<div class="lpx-ph"><div>${esc(title)}${sub ? `<br><small>${esc(sub)}</small>` : ""}</div></div>`;
+    /* placeholder underneath + image on top: a broken image simply removes
+       itself and the branded placeholder shows — never a broken-image icon */
+    const img = (url, alt, f) =>
+      ph(alt || "Learning Ecology") + (safeUrl(url)
+        ? `<img src="${esc(url)}" alt="${esc(alt || "")}" loading="lazy" decoding="async"
+               style="position:absolute;inset:0;object-position:${esc(focal(f))};" onerror="this.remove()">`
+        : "");
+    const btnHtml = (label, url, newTab, cls, soonLabel) => {
+      const u = safeUrl(url);
+      return u
+        ? `<a class="btn ${cls || ""}" href="${esc(u)}" ${newTab ? 'target="_blank" rel="noopener"' : ""} data-hit="cta-trial">${esc(label)}</a>`
+        : `<span class="lpx-soon" title="Liên kết sẽ được cập nhật sớm" aria-disabled="true">${esc(soonLabel || "Sắp ra mắt")}</span>`;
+    };
+
+    /* preview mode: the signed-in owner can open index.html?preview=1 to see
+       drafts (marked DRAFT). Anonymous visitors always get published only —
+       that is enforced by the database, not by this flag. */
+    const PREVIEW = new URLSearchParams(location.search).has("preview");
+
+    const q = table => sb.from(table).select("*").order("sort_order").order("updated_at")
+      .then(r => (r.data || []).filter(x => x.status === "published" || (PREVIEW && x.status === "draft")))
+      .catch(() => []);
+
+    async function boot() {
+      const [settingsRes, courses, trials, achievements, feedback, gallery] = await Promise.all([
+        sb.from("landing_settings").select("config").eq("id", 1).maybeSingle().catch(() => ({ data: null })),
+        q("landing_courses"), q("landing_trials"),
+        q("landing_achievements"), q("landing_feedback"), q("landing_gallery")
+      ]);
+      const cfg = (settingsRes && settingsRes.data && settingsRes.data.config) || {};
+      applySections(cfg);
+      renderTrial(cfg, trials);
+      renderCourses(cfg, courses);
+      renderAchievements(cfg, achievements, feedback, gallery);
+    }
+
+    /* ---- section order + visibility from the owner's settings ---- */
+    function applySections(cfg) {
+      const main = $("lp-main");
+      const list = Array.isArray(cfg.sections) && cfg.sections.length ? cfg.sections : null;
+      if (!list) return;
+      for (const s of list) {
+        const el = main.querySelector(`[data-sec="${s.id}"]`);
+        if (!el) continue;
+        main.appendChild(el);                       // append in configured order
+        if (s.show === false) el.hidden = true;
+      }
+      const t = cfg.titles || {};
+      if (t.courses) { $("coursesTitle").textContent = t.courses; }
+      if (t.courses_lead) { $("coursesLead").textContent = t.courses_lead; }
+      if (t.achieve) { $("achTitle").textContent = t.achieve; }
+      if (t.achieve_lead) { $("achLead").textContent = t.achieve_lead; }
+    }
+
+    /* ================= Học thử miễn phí ================= */
+    function renderTrial(cfg, items) {
+      const sec = document.querySelector('[data-sec="trial"]');
+      const t = cfg.trial || {};
+      if (t.show === false) { sec.hidden = true; return; }
+      const soon = t.soon_label || "Sắp ra mắt";
+      const p = btnHtml(t.p_label || "Học thử miễn phí", t.p_url, t.p_new !== false, "gold", soon);
+      const s = btnHtml(t.s_label || "Nhắn Zalo tư vấn", t.s_url, t.s_new !== false, "ghost", soon);
+      const bg = safeUrl(t.image);
+      $("trialBox").innerHTML =
+        `<div class="lpx-trial${bg ? " hasimg" : ""}" ${bg ? `style="background-image:url('${esc(bg)}')"` : ""}>
+          ${t.badge ? `<span class="lpx-badge">${esc(t.badge)}</span>` : ""}
+          <h2>${esc(t.title || "Học thử miễn phí")}</h2>
+          ${t.intro ? `<p class="lead">${esc(t.intro)}</p>` : ""}
+          <div class="ctas">${t.primary_first === false ? s + p : p + s}</div>
+          <div class="lpx-tgrid">${items.map(it => `
+            <article class="lpx-tcard">
+              ${it.status === "draft" ? '<span class="lpx-draft">DRAFT</span>' : ""}
+              <div class="thumb">${img(it.image_url, it.image_alt || it.title)}</div>
+              <div class="tb">
+                ${it.course_label ? `<span class="cat">${esc(it.course_label)}</span>` : ""}
+                <h3>${esc(it.title)}</h3>
+                ${it.description ? `<p>${esc(it.description)}</p>` : ""}
+                <div class="act">${btnHtml(it.btn_label || "Học thử miễn phí", it.url, it.new_tab !== false, "", soon)}</div>
+              </div>
+            </article>`).join("")}</div>
+        </div>`;
+    }
+
+    /* ================= course cover-flow carousel ================= */
+    const FALLBACK_COURSES = [
+      { title: "Tiếng Trung HSK" }, { title: "IELTS" }, { title: "VSTEP" },
+      { title: "Tiếng Anh Giao tiếp" }, { title: "Công cụ giảng dạy" }
+    ];
+    function renderCourses(cfg, courses) {
+      const sec = document.querySelector('[data-sec="courses"]');
+      const list = courses.length ? courses : FALLBACK_COURSES;
+      if (!list.length) { sec.hidden = true; return; }
+      let idx = Math.max(0, list.findIndex(c => c.id && c.id === cfg.default_course));
+      if (idx < 0) idx = 0;
+      const soon = (cfg.trial || {}).soon_label || "Sắp ra mắt";
+
+      $("courseBox").innerHTML =
+        `<div class="lpx-cwrap">
+          <div class="lpx-stage" id="cfStage" tabindex="0" role="listbox"
+               aria-label="Các khóa học — dùng phím mũi tên để chuyển">${list.map((c, i) => `
+            <div class="lpx-card" data-i="${i}" role="option" aria-selected="false">
+              ${c.status === "draft" ? '<span class="lpx-draft">DRAFT</span>' : ""}
+              <div class="cov">${img(c.cover_url, c.cover_alt || c.title, c.focal)}</div>
+              <div class="strip"><h3>${esc(c.title)}</h3>
+                ${c.category ? `<span class="tag">${esc(c.category)}</span>` : ""}</div>
+            </div>`).join("")}
+          </div>
+          <div class="lpx-nav">
+            <button id="cfPrev" aria-label="Khóa trước">‹</button>
+            <div class="lpx-dots" id="cfDots" role="tablist">${list.map((c, i) =>
+              `<button role="tab" data-i="${i}" aria-label="Khóa ${i + 1}: ${esc(c.title)}"></button>`).join("")}</div>
+            <button id="cfNext" aria-label="Khóa sau">›</button>
+            ${cfg.autoplay ? '<button id="cfPause" aria-label="Tạm dừng tự chạy" aria-pressed="false">⏸</button>' : ""}
+          </div>
+          <div class="lpx-info" id="cfInfo" aria-live="polite"></div>
+        </div>`;
+
+      const stage = $("cfStage"), cards = [...stage.children], dots = [...$("cfDots").children];
+      const info = $("cfInfo");
+      let autoplayTimer = null;
+      const autoplayMs = Math.min(15000, Math.max(4000, +cfg.autoplay_ms || 6000));
+      let autoplayOn = !!cfg.autoplay && !REDUCED;
+
+      function layout() {
+        cards.forEach((card, i) => {
+          let o = i - idx;
+          /* shortest path around the ring */
+          if (o > list.length / 2) o -= list.length;
+          if (o < -list.length / 2) o += list.length;
+          const abs = Math.abs(o);
+          const vis = abs <= 2;
+          card.style.transform = REDUCED
+            ? `translateX(${o * 102}%)`
+            : `translateX(${o * 56}%) scale(${Math.max(0.68, 1 - abs * 0.14)})
+               rotateY(${o === 0 ? 0 : (o < 0 ? 16 : -16)}deg)`;
+          card.style.zIndex = 10 - abs;
+          card.style.opacity = vis ? String(1 - abs * 0.25) : "0";
+          card.style.filter = abs ? "saturate(0.8)" : "none";
+          card.setAttribute("aria-hidden", vis ? "false" : "true");
+          card.setAttribute("aria-selected", o === 0 ? "true" : "false");
+          dots[i].classList.toggle("on", i === idx);
+        });
+        renderInfo(list[idx]);
+      }
+      function renderInfo(c) {
+        const lines = s => String(s || "").split("\n").map(x => x.trim()).filter(Boolean);
+        const meta = [];
+        if (c.lesson_count) meta.push(`<span>📚 <b>${esc(c.lesson_count)}</b></span>`);
+        if (c.period) meta.push(`<span>⏳ <b>${esc(c.period)}</b></span>`);
+        if (c.access_type) meta.push(`<span>${c.access_type === "premium" ? "👑" : "🔓"} <b>${esc(
+          c.access_type === "premium" ? "Premium" : c.access_type === "free" ? "Miễn phí" : "Miễn phí + Premium")}</b></span>`);
+        if (c.audience) meta.push(`<span>🎯 <b>${esc(c.audience)}</b></span>`);
+        const html =
+          `<h3>${esc(c.title)}</h3>
+          ${c.tagline ? `<p class="tagline">${esc(c.tagline)}</p>` : ""}
+          ${meta.length ? `<div class="meta">${meta.join("")}</div>` : ""}
+          ${c.description ? `<p class="desc">${esc(c.description)}</p>` : ""}
+          ${lines(c.outcomes).length ? `<ul>${lines(c.outcomes).map(x => `<li>✅ ${esc(x)}</li>`).join("")}</ul>` : ""}
+          ${lines(c.features).length ? `<ul>${lines(c.features).map(x => `<li>✨ ${esc(x)}</li>`).join("")}</ul>` : ""}
+          ${c.price ? `<p class="price">${esc(c.price)}</p>` : ""}
+          <div class="ctas">
+            ${btnHtml(c.btn1_label || "Học thử miễn phí", c.btn1_url, c.new_tab, "gold", soon)}
+            ${(c.btn2_label || c.btn2_url) ? btnHtml(c.btn2_label || "Xem chi tiết", c.btn2_url, c.new_tab, "ghost", soon) : ""}
+          </div>`;
+        if (REDUCED) { info.innerHTML = html; return; }
+        info.classList.add("swap");
+        setTimeout(() => { info.innerHTML = html; info.classList.remove("swap"); }, 160);
+      }
+      const go = d => { idx = (idx + d + list.length) % list.length; layout(); };
+      const goTo = i => { idx = i; layout(); };
+      $("cfPrev").addEventListener("click", () => { userTouched(); go(-1); });
+      $("cfNext").addEventListener("click", () => { userTouched(); go(1); });
+      dots.forEach(d => d.addEventListener("click", () => { userTouched(); goTo(+d.dataset.i); }));
+      cards.forEach(card => card.addEventListener("click", () => {
+        const i = +card.dataset.i; if (i !== idx) { userTouched(); goTo(i); }
+      }));
+      stage.addEventListener("keydown", e => {
+        if (e.key === "ArrowLeft") { e.preventDefault(); userTouched(); go(-1); }
+        if (e.key === "ArrowRight") { e.preventDefault(); userTouched(); go(1); }
+      });
+      /* horizontal wheel / trackpad only — vertical scrolling stays normal */
+      stage.addEventListener("wheel", e => {
+        if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 12) {
+          e.preventDefault(); userTouched(); go(e.deltaX > 0 ? 1 : -1);
+        }
+      }, { passive: false });
+      /* touch swipe */
+      let px = null;
+      stage.addEventListener("pointerdown", e => { px = e.clientX; });
+      stage.addEventListener("pointerup", e => {
+        if (px === null) return;
+        const dx = e.clientX - px; px = null;
+        if (Math.abs(dx) > 40) { userTouched(); go(dx < 0 ? 1 : -1); }
+      });
+      /* slow optional autoplay: pause on interaction/hover, visible pause button */
+      function startAuto() {
+        stopAuto();
+        if (autoplayOn) autoplayTimer = setInterval(() => go(1), autoplayMs);
+      }
+      function stopAuto() { if (autoplayTimer) { clearInterval(autoplayTimer); autoplayTimer = null; } }
+      function userTouched() { stopAuto(); if (autoplayOn) setTimeout(startAuto, autoplayMs * 2); }
+      const pauseBtn = $("cfPause");
+      if (pauseBtn) pauseBtn.addEventListener("click", () => {
+        autoplayOn = !autoplayOn;
+        pauseBtn.textContent = autoplayOn ? "⏸" : "▶";
+        pauseBtn.setAttribute("aria-pressed", String(!autoplayOn));
+        autoplayOn ? startAuto() : stopAuto();
+      });
+      stage.addEventListener("pointerenter", stopAuto);
+      stage.addEventListener("pointerleave", () => { if (autoplayOn) startAuto(); });
+      layout();
+      startAuto();
+    }
+
+    /* ================= achievements / feedback / gallery ================= */
+    const ACH_CATS = { achievement: "Thành tựu", certificate: "Chứng chỉ", result: "Kết quả học viên", activity: "Hoạt động" };
+    const GAL_CATS = { activity: "Hoạt động", platform: "Hoạt động", result: "Kết quả học viên", event: "Hoạt động", other: "Hoạt động" };
+    function renderAchievements(cfg, ach, fb, gal) {
+      const sec = document.querySelector('[data-sec="achieve"]');
+      const items = [
+        ...ach.map(a => ({ kind: "ach", cat: ACH_CATS[a.category] || "Thành tựu", title: a.title,
+          text: [a.org, a.date_text].filter(Boolean).join(" · "), desc: a.description,
+          image: a.image_url, alt: a.image_alt || a.title, verify: safeUrl(a.verify_url), draft: a.status === "draft" })),
+        ...fb.map(f => ({ kind: "fb", cat: "Phản hồi", title: f.student_name,
+          text: [f.course_label, f.role_label].filter(Boolean).join(" · "),
+          desc: f.feedback, result: f.result, image: f.shot_url, alt: f.shot_caption || ("Phản hồi của " + f.student_name),
+          avatar: f.avatar_url, draft: f.status === "draft" })),
+        ...gal.map(g => ({ kind: "gal", cat: GAL_CATS[g.category] || "Hoạt động", title: g.caption || "",
+          text: g.date_text || "", desc: "", image: g.image_url, alt: g.image_alt || g.caption || "Ảnh lớp học",
+          draft: g.status === "draft" }))
+      ];
+      if (!items.length) { sec.hidden = true; return; }
+      sec.hidden = false;
+      const FILTERS = ["Tất cả", "Thành tựu", "Chứng chỉ", "Kết quả học viên", "Phản hồi", "Hoạt động"];
+      const startCat = FILTERS.includes(cfg.ach_filter) ? cfg.ach_filter : "Tất cả";
+      let current = startCat;
+      $("achBox").innerHTML =
+        `<div class="lpx-filters" id="achFilters">${FILTERS.map(f =>
+          `<button data-f="${esc(f)}" class="${f === current ? "on" : ""}" ${f === current ? 'aria-pressed="true"' : ""}>${esc(f)}</button>`).join("")}</div>
+        <div class="lpx-atrack" id="achTrack" tabindex="0" aria-label="Thành tựu và cảm nhận — cuộn ngang"></div>
+        <div class="lpx-nav">
+          <button id="achPrev" aria-label="Trước">‹</button>
+          <button id="achNext" aria-label="Sau">›</button>
+        </div>`;
+      const track = $("achTrack");
+      let shown = [];
+      function paint() {
+        shown = items.filter(x => current === "Tất cả" || x.cat === current);
+        track.innerHTML = shown.map((x, i) => `
+          <article class="lpx-acard" data-i="${i}" ${x.image ? 'data-lb="1"' : ""} tabindex="0"
+                   aria-label="${esc(x.cat)}: ${esc(x.title || x.alt)}">
+            ${x.draft ? '<span class="lpx-draft">DRAFT</span>' : ""}
+            ${x.kind === "fb" && !x.image
+              ? `<div class="ab"><span class="cat">${esc(x.cat)}</span>
+                  <p class="fbtext">“${esc(x.desc)}”</p>
+                  ${x.result ? `<p>📈 ${esc(x.result)}</p>` : ""}
+                  <div class="who">${esc(x.title)}${x.text ? " — " + esc(x.text) : ""}</div></div>`
+              : `<div class="im">${img(x.image, x.alt)}</div>
+                <div class="ab"><span class="cat">${esc(x.cat)}</span>
+                  ${x.title ? `<h3>${esc(x.title)}</h3>` : ""}
+                  ${x.text ? `<p>${esc(x.text)}</p>` : ""}
+                  ${x.kind === "fb" && x.desc ? `<p class="fbtext">“${esc(x.desc)}”</p>` : (x.desc ? `<p>${esc(x.desc)}</p>` : "")}
+                </div>`}
+          </article>`).join("")
+          || `<p class="lead" style="width:100%;">Chưa có mục nào trong nhóm này.</p>`;
+      }
+      paint();
+      $("achFilters").addEventListener("click", e => {
+        const b = e.target.closest("button"); if (!b) return;
+        current = b.dataset.f;
+        [...$("achFilters").children].forEach(x => {
+          x.classList.toggle("on", x === b);
+          x.toggleAttribute("aria-pressed", x === b);
+        });
+        paint();
+      });
+      const step = () => Math.min(340, track.clientWidth * 0.8);
+      $("achPrev").addEventListener("click", () => track.scrollBy({ left: -step(), behavior: REDUCED ? "auto" : "smooth" }));
+      $("achNext").addEventListener("click", () => track.scrollBy({ left: step(), behavior: REDUCED ? "auto" : "smooth" }));
+      track.addEventListener("keydown", e => {
+        if (e.key === "ArrowLeft") { e.preventDefault(); $("achPrev").click(); }
+        if (e.key === "ArrowRight") { e.preventDefault(); $("achNext").click(); }
+      });
+      /* lightbox for image cards */
+      let lbList = [], lbIdx = 0;
+      const lb = $("lpxLb");
+      function openLb(i) {
+        lbList = shown.filter(x => x.image);
+        if (!lbList.length) return;
+        lbIdx = Math.max(0, lbList.indexOf(shown[i]));
+        showLb();
+        lb.classList.add("open");
+        $("lbX").focus();
+      }
+      function showLb() {
+        const x = lbList[lbIdx];
+        $("lbImg").src = x.image; $("lbImg").alt = x.alt || "";
+        $("lbCap").textContent = [x.title, x.text, x.desc].filter(Boolean).join(" — ");
+      }
+      const closeLb = () => { lb.classList.remove("open"); $("lbImg").src = ""; };
+      track.addEventListener("click", e => {
+        const card = e.target.closest(".lpx-acard[data-lb]"); if (card) openLb(+card.dataset.i);
+      });
+      track.addEventListener("keydown", e => {
+        if (e.key === "Enter") {
+          const card = e.target.closest(".lpx-acard[data-lb]"); if (card) openLb(+card.dataset.i);
+        }
+      });
+      $("lbX").addEventListener("click", closeLb);
+      $("lbPrev").addEventListener("click", () => { lbIdx = (lbIdx - 1 + lbList.length) % lbList.length; showLb(); });
+      $("lbNext").addEventListener("click", () => { lbIdx = (lbIdx + 1) % lbList.length; showLb(); });
+      lb.addEventListener("click", e => { if (e.target === lb) closeLb(); });
+      document.addEventListener("keydown", e => {
+        if (!lb.classList.contains("open")) return;
+        if (e.key === "Escape") closeLb();
+        if (e.key === "ArrowLeft") $("lbPrev").click();
+        if (e.key === "ArrowRight") $("lbNext").click();
+      });
+    }
+
+    boot().catch(() => {
+      /* database unreachable: show the fallback course names, hide the rest */
+      try {
+        renderTrial({}, []);
+        renderCourses({}, []);
+        document.querySelector('[data-sec="achieve"]').hidden = true;
+      } catch (e) {}
+    });
+  })();
   </script>
   <script>
     // PWA: offline shell + installability (needs HTTPS, e.g. GitHub Pages)

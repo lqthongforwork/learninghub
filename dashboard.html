@@ -1934,6 +1934,16 @@
         </div>
         </div>
 
+        <div class="tabpane" data-tab="landing">
+          <div class="card">
+            <div class="card-head"><h2>🌐 Landing Page</h2>
+              <a class="ghost btn" href="index.html?preview=1" target="_blank" rel="noopener"
+                 style="text-decoration:none;">👁 Preview (incl. drafts)</a></div>
+            <p class="kind" style="margin:0 0 0.6rem;">Everything on the public landing page — free-trial links, the course carousel, achievements, student feedback, gallery and section layout — is managed here. Visitors only ever see <b>Published</b> items.</p>
+            <div id="lpm-root"><p class="empty">Loading…</p></div>
+          </div>
+        </div>
+
         <div class="tabpane" data-tab="students">
         <div id="stu-alert"></div>
         <div class="card">
@@ -2354,6 +2364,7 @@
 
       function showTab(t) {
         adminTab = t;
+        if (t === "landing" && window.__lpmInit) window.__lpmInit();
         app.querySelectorAll(".tabpane").forEach(p =>
           p.classList.toggle("show", p.getAttribute("data-tab") === t));
         document.querySelectorAll("#subnav .sn-item[data-id]").forEach(b =>
@@ -2370,6 +2381,7 @@
           { id: "reading", label: "Reading" + ((rtRes.data || []).length ? " (" + rtRes.data.length + ")" : ""), icon: "library", group: "Content" },
           { id: "shadow", label: "Shadowing" + ((svRes.data || []).length ? " (" + svRes.data.length + ")" : ""), icon: "video", group: "Content" },
           { id: "dict", label: "Dictation", icon: "headphones", group: "Content" },
+          { id: "landing", label: "Landing Page", icon: "globe", group: "Content" },
           { id: "students", label: "Students (" + onlyStudents.length + ")" + (stuWarn ? " ⚠️" : ""), icon: "users", group: "Users" },
           { id: "progress", label: "Analytics", icon: "bar-chart-3", group: "Analytics" },
           { id: "announce", label: "Announce" + ((anns || []).length ? " (" + anns.length + ")" : ""), icon: "megaphone", group: "Community" },
@@ -3619,6 +3631,532 @@
         }
       })();
       // =============== END BULK ACCOUNT IMPORT ===============
+
+      // ================= LANDING PAGE CMS =================
+      // Owner-only by RLS (migration35). One generic list+form engine drives
+      // the five collections; a custom panel drives display settings.
+      (function () {
+        const root = document.getElementById("lpm-root");
+        if (!root) return;
+        const T = { trials: "landing_trials", courses: "landing_courses",
+                    ach: "landing_achievements", fb: "landing_feedback", gal: "landing_gallery" };
+        const NAMES = { trials: "Học thử miễn phí", courses: "Khóa học", ach: "Thành tựu",
+                        fb: "Phản hồi học viên", gal: "Thư viện hình ảnh", settings: "Cài đặt hiển thị" };
+        const TITLE_OF = { trials: r => r.title, courses: r => r.title, ach: r => r.title,
+                           fb: r => r.student_name, gal: r => r.caption || r.image_alt || "(ảnh)" };
+        const D = { trials: [], courses: [], ach: [], fb: [], gal: [], cfg: null };
+        let loaded = false, failed = false, cur = "trials", editing = null, dirty = false;
+
+        const FOCAL_OPTS = [["center","Giữa"],["top","Trên"],["bottom","Dưới"],["left","Trái"],["right","Phải"],["custom","Tùy chỉnh…"]];
+        const F = {
+          trials: [
+            { k: "title", l: "Tiêu đề *", req: 1 },
+            { k: "course_label", l: "Khóa học liên quan" },
+            { k: "btn_label", l: "Nhãn nút" },
+            { k: "url", l: "Liên kết đích (trống = Sắp ra mắt)", t: "url" },
+            { k: "new_tab", l: "Mở trong tab mới", t: "check" },
+            { k: "description", l: "Mô tả ngắn", t: "area" },
+            { k: "image_url", l: "Ảnh 16:9", t: "img" },
+            { k: "image_alt", l: "Mô tả ảnh (alt)" }
+          ],
+          courses: [
+            { k: "title", l: "Tên khóa *", req: 1 },
+            { k: "tagline", l: "Tagline ngắn" },
+            { k: "category", l: "Nhóm (hiện trên thẻ)" },
+            { k: "slug", l: "Mã (slug)" },
+            { k: "cover_url", l: "Ảnh bìa", t: "img" },
+            { k: "cover_alt", l: "Mô tả ảnh (alt)" },
+            { k: "focal", l: "Tâm ảnh (phần không bị cắt)", t: "sel", o: FOCAL_OPTS },
+            { k: "access_type", l: "Loại truy cập", t: "sel",
+              o: [["","—"],["free","Miễn phí"],["premium","👑 Premium"],["both","Miễn phí + Premium"]] },
+            { k: "price", l: "Giá hiển thị (vd Chỉ từ 39.000đ/tháng)" },
+            { k: "period", l: "Thời hạn truy cập" },
+            { k: "lesson_count", l: "Số bài học / tài liệu" },
+            { k: "audience", l: "Đối tượng học viên" },
+            { k: "course_id", l: "Gắn khóa học nội bộ", t: "course" },
+            { k: "description", l: "Mô tả 2–4 câu", t: "area" },
+            { k: "outcomes", l: "Kết quả đạt được (mỗi dòng một ý)", t: "area" },
+            { k: "features", l: "Điểm nổi bật (mỗi dòng một ý)", t: "area" },
+            { k: "btn1_label", l: "Nút chính — nhãn" },
+            { k: "btn1_url", l: "Nút chính — liên kết", t: "url" },
+            { k: "btn2_label", l: "Nút phụ — nhãn" },
+            { k: "btn2_url", l: "Nút phụ — liên kết", t: "url" },
+            { k: "new_tab", l: "Mở liên kết trong tab mới", t: "check" },
+            { k: "featured", l: "Nổi bật", t: "check" }
+          ],
+          ach: [
+            { k: "title", l: "Tiêu đề *", req: 1 },
+            { k: "category", l: "Nhóm", t: "sel",
+              o: [["achievement","Thành tựu"],["certificate","Chứng chỉ"],["result","Kết quả học viên"],["activity","Hoạt động"]] },
+            { k: "org", l: "Tổ chức cấp" },
+            { k: "date_text", l: "Ngày / năm" },
+            { k: "description", l: "Mô tả ngắn", t: "area" },
+            { k: "image_url", l: "Hình ảnh minh chứng", t: "img" },
+            { k: "image_alt", l: "Mô tả ảnh (alt)" },
+            { k: "verify_url", l: "Liên kết xác minh (tùy chọn)", t: "url" }
+          ],
+          fb: [
+            { k: "student_name", l: "Tên học viên (có thể ẩn danh) *", req: 1 },
+            { k: "course_label", l: "Khóa đã học" },
+            { k: "role_label", l: "Vai trò / trình độ (tùy chọn)" },
+            { k: "feedback", l: "Nội dung phản hồi", t: "area" },
+            { k: "result", l: "Kết quả / tiến bộ cụ thể (tùy chọn)" },
+            { k: "avatar_url", l: "Ảnh đại diện (tùy chọn)", t: "img" },
+            { k: "shot_url", l: "Ảnh chụp tin nhắn (đã che thông tin cá nhân)", t: "img" },
+            { k: "shot_caption", l: "Chú thích ảnh" },
+            { k: "permission", l: "✅ ĐÃ xin phép học viên cho đăng công khai", t: "check" }
+          ],
+          gal: [
+            { k: "image_url", l: "Ảnh *", t: "img", req: 1 },
+            { k: "image_alt", l: "Mô tả ảnh (alt, tiếng Việt) *", req: 1 },
+            { k: "category", l: "Nhóm", t: "sel",
+              o: [["activity","Hoạt động lớp học"],["platform","Nền tảng"],["result","Kết quả học viên"],["event","Sự kiện"],["other","Khác"]] },
+            { k: "caption", l: "Chú thích" },
+            { k: "date_text", l: "Ngày / năm" }
+          ]
+        };
+        const SEC_NAMES = { trial: "Học thử miễn phí", courses: "Khóa học", teacher: "Giáo viên",
+                            achieve: "Thành tựu & Cảm nhận", feats: "Tính năng", quote: "Câu trích dẫn", contact: "Liên hệ / Học phí" };
+        const okUrl = u => !u || /^(https?:\/\/|\/|#|[a-z0-9_-]+\.html)/i.test(String(u).trim());
+        const statusPill = s => s === "published"
+          ? '<span class="pill done">Published</span>'
+          : s === "hidden" ? '<span class="pill bad">Hidden</span>' : '<span class="pill">Draft</span>';
+        const fmtDate = d => { try { return new Date(d).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" }); } catch (e) { return ""; } };
+
+        async function load() {
+          const rs = await Promise.all([
+            sb.from("landing_settings").select("config").eq("id", 1).maybeSingle(),
+            ...Object.values(T).map(t => sb.from(t).select("*").order("sort_order").order("updated_at"))
+          ]);
+          if (rs[0].error || rs.slice(1).some(r => r.error)) { failed = true; return; }
+          D.cfg = (rs[0].data && rs[0].data.config) || {};
+          Object.keys(T).forEach((k, i) => { D[k] = rs[i + 1].data || []; });
+          loaded = true;
+        }
+
+        function guardDirty(fn) {
+          if (!dirty) return fn();
+          UI.confirmDialog({ title: "Bỏ thay đổi chưa lưu?", danger: true,
+            body: "Biểu mẫu đang mở có thay đổi chưa lưu — rời đi sẽ mất chúng.", okText: "Bỏ thay đổi" })
+            .then(ok => { if (ok) { dirty = false; editing = null; fn(); } });
+        }
+        if (!window.__lpmBU) {
+          window.__lpmBU = true;
+          window.addEventListener("beforeunload", e => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+        }
+
+        /* ---------- generic field rendering ---------- */
+        function fieldHtml(f, val) {
+          const v = val == null ? "" : val;
+          if (f.t === "check") return `
+            <label style="font-size:0.86rem; color:var(--muted); cursor:pointer; align-self:center; white-space:nowrap;">
+              <input type="checkbox" data-k="${f.k}" ${v ? "checked" : ""} /> ${esc(f.l)}</label>`;
+          if (f.t === "area") return `
+            <div class="field" style="flex-basis:100%;"><label>${esc(f.l)}</label>
+              <textarea data-k="${f.k}" style="min-height:74px;">${esc(v)}</textarea></div>`;
+          if (f.t === "sel") return `
+            <div class="field" style="max-width:230px;"><label>${esc(f.l)}</label>
+              <select data-k="${f.k}">${f.o.map(([ov, ol]) =>
+                `<option value="${esc(ov)}" ${String(v) === ov ? "selected" : ""}>${esc(ol)}</option>`).join("")}
+                ${f.k === "focal" && !FOCAL_OPTS.some(([ov]) => ov === v) && v ? `<option value="${esc(v)}" selected>${esc(v)}</option>` : ""}
+              </select></div>`;
+          if (f.t === "course") return `
+            <div class="field" style="max-width:230px;"><label>${esc(f.l)}</label>
+              <select data-k="${f.k}"><option value="">— không gắn —</option>${(courses || []).map(c =>
+                `<option value="${c.id}" ${v === c.id ? "selected" : ""}>${esc(c.title)}</option>`).join("")}</select></div>`;
+          if (f.t === "img") return `
+            <div class="field" style="min-width:260px; flex-basis:100%;"><label>${esc(f.l)} — JPG/PNG/WebP, tối đa 10 MB</label>
+              <div class="lpm-drop" data-imgk="${f.k}" tabindex="0" role="button"
+                   style="border:2px dashed var(--line); border-radius:10px; padding:0.6rem 0.8rem; display:flex; gap:0.8rem; align-items:center; flex-wrap:wrap; cursor:pointer;">
+                <img src="${esc(v)}" alt="" style="${v ? "" : "display:none;"} width:132px; aspect-ratio:16/9; object-fit:cover; border-radius:8px; border:1px solid var(--line);">
+                <span class="kind" style="text-transform:none; letter-spacing:0;">Kéo–thả ảnh vào đây hoặc bấm để chọn</span>
+                <button type="button" class="ghost" data-imgdel ${v ? "" : "hidden"} style="flex:none;">✕ Bỏ ảnh</button>
+                <span class="msg" data-imgmsg style="flex-basis:100%; margin:0;"></span>
+                <input type="hidden" data-k="${f.k}" value="${esc(v)}">
+                <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" hidden>
+              </div></div>`;
+          return `
+            <div class="field"><label>${esc(f.l)}</label>
+              <input data-k="${f.k}" value="${esc(v)}" /></div>`;
+        }
+        function formHtml(coll, r) {
+          return `
+            <div class="lpm-form" data-coll="${coll}" data-id="${r.id || ""}"
+                 style="border:1px solid var(--accent-ink); border-radius:var(--radius); padding:0.9rem; margin:0.5rem 0 0.9rem;">
+              <div class="form-row">${F[coll].map(f => fieldHtml(f, r[f.k])).join("")}</div>
+              <div class="form-row" style="margin-top:0.5rem;">
+                <button data-act="save">💾 Lưu</button>
+                <button class="ghost" data-act="cancel">Hủy</button>
+                <span class="kind" style="align-self:center; text-transform:none;">${r.id ? "Sửa lần cuối: " + fmtDate(r.updated_at) : "Mục mới — sẽ lưu ở trạng thái Draft"}</span>
+              </div>
+              <p class="msg lpm-msg"></p>
+            </div>`;
+        }
+
+        /* ---------- panels ---------- */
+        function listPanel(coll) {
+          const rows = D[coll];
+          return `
+            <div class="form-row" style="margin:0.4rem 0 0.6rem;">
+              <button data-act="add" data-coll="${coll}">+ Thêm mới</button>
+              ${coll === "gal" ? `<button class="ghost" data-act="multi">⬆ Tải nhiều ảnh cùng lúc</button>
+                <input type="file" id="lpm-multi" accept="image/jpeg,image/png,image/webp" multiple hidden>` : ""}
+              ${coll === "fb" ? `<span class="kind" style="align-self:center; text-transform:none;">⚠️ Chỉ đăng được khi đã tick "ĐÃ xin phép học viên".</span>` : ""}
+            </div>
+            ${editing && editing.coll === coll && !editing.id ? formHtml(coll, editing.draft || {}) : ""}
+            ${rows.map((r, i) => `
+              <div class="lesson" data-id="${r.id}">
+                <div class="meta"><div class="title">${esc(TITLE_OF[coll](r) || "—")}</div>
+                  <span class="kind">${statusPill(r.status)} · sửa ${fmtDate(r.updated_at)}</span></div>
+                <select data-act="status" data-coll="${coll}" data-id="${r.id}" style="max-width:130px;">
+                  <option value="draft" ${r.status === "draft" ? "selected" : ""}>Draft</option>
+                  <option value="published" ${r.status === "published" ? "selected" : ""}>Published</option>
+                  <option value="hidden" ${r.status === "hidden" ? "selected" : ""}>Hidden</option>
+                </select>
+                <button class="ghost" data-act="up" data-coll="${coll}" data-id="${r.id}" ${i === 0 ? "disabled" : ""}>↑</button>
+                <button class="ghost" data-act="down" data-coll="${coll}" data-id="${r.id}" ${i === rows.length - 1 ? "disabled" : ""}>↓</button>
+                <button class="ghost" data-act="edit" data-coll="${coll}" data-id="${r.id}">✏️</button>
+                <button class="ghost" data-act="dup" data-coll="${coll}" data-id="${r.id}" title="Nhân bản">⧉</button>
+                <button class="ghost" data-act="del" data-coll="${coll}" data-id="${r.id}"
+                        style="color:var(--danger); border-color:var(--danger);">🗑</button>
+              </div>
+              ${editing && editing.coll === coll && editing.id === r.id ? formHtml(coll, editing.draft) : ""}`).join("")
+              || `<p class="empty">Chưa có mục nào — bấm "+ Thêm mới" để tạo mục đầu tiên.</p>`}`;
+        }
+        function settingsPanel() {
+          const c = D.cfg || {}; const t = c.trial || {};
+          const secs = Array.isArray(c.sections) && c.sections.length ? c.sections
+            : ["trial","courses","teacher","achieve","feats","quote","contact"].map(id => ({ id, show: true }));
+          return `
+            <h3 style="margin:0.6rem 0 0.3rem;">Thứ tự &amp; hiển thị các phần</h3>
+            <p class="kind" style="text-transform:none;">"Học thử miễn phí" nên luôn đứng đầu — sẽ có cảnh báo nếu bạn chuyển nó xuống.</p>
+            <div id="lpm-secs">${secs.map((s, i) => `
+              <div class="lesson" data-sec="${s.id}">
+                <div class="meta"><div class="title">${esc(SEC_NAMES[s.id] || s.id)}</div></div>
+                <label style="font-size:0.85rem; color:var(--muted);"><input type="checkbox" data-secshow="${s.id}" ${s.show !== false ? "checked" : ""}/> hiện</label>
+                <button class="ghost" data-act="secup" data-i="${i}" ${i === 0 ? "disabled" : ""}>↑</button>
+                <button class="ghost" data-act="secdown" data-i="${i}" ${i === secs.length - 1 ? "disabled" : ""}>↓</button>
+              </div>`).join("")}</div>
+            <h3 style="margin:1rem 0 0.3rem;">Khối "Học thử miễn phí"</h3>
+            <div class="form-row">
+              <div class="field"><label>Tiêu đề</label><input data-cfg="trial.title" value="${esc(t.title || "Học thử miễn phí")}"></div>
+              <div class="field"><label>Huy hiệu (badge, tùy chọn)</label><input data-cfg="trial.badge" value="${esc(t.badge || "")}"></div>
+              <div class="field" style="flex-basis:100%;"><label>Giới thiệu ngắn</label>
+                <textarea data-cfg="trial.intro" style="min-height:56px;">${esc(t.intro || "")}</textarea></div>
+              <div class="field"><label>Nút chính — nhãn</label><input data-cfg="trial.p_label" value="${esc(t.p_label || "Học thử miễn phí")}"></div>
+              <div class="field"><label>Nút chính — liên kết</label><input data-cfg="trial.p_url" value="${esc(t.p_url || "")}"></div>
+              <label style="font-size:0.85rem; color:var(--muted); align-self:center;"><input type="checkbox" data-cfg="trial.p_new" ${t.p_new !== false ? "checked" : ""}> tab mới</label>
+              <div class="field"><label>Nút phụ — nhãn</label><input data-cfg="trial.s_label" value="${esc(t.s_label || "Nhắn Zalo tư vấn")}"></div>
+              <div class="field"><label>Nút phụ — liên kết</label><input data-cfg="trial.s_url" value="${esc(t.s_url || "")}"></div>
+              <label style="font-size:0.85rem; color:var(--muted); align-self:center;"><input type="checkbox" data-cfg="trial.s_new" ${t.s_new !== false ? "checked" : ""}> tab mới</label>
+              <label style="font-size:0.85rem; color:var(--muted); align-self:center;"><input type="checkbox" data-cfg="trial.primary_first" ${t.primary_first !== false ? "checked" : ""}> nút chính đứng trước</label>
+              <div class="field"><label>Nhãn khi chưa có liên kết</label><input data-cfg="trial.soon_label" value="${esc(t.soon_label || "Sắp ra mắt")}"></div>
+              <div class="field"><label>Ảnh nền khối (URL từ Thư viện ảnh, tùy chọn)</label><input data-cfg="trial.image" value="${esc(t.image || "")}"></div>
+            </div>
+            <h3 style="margin:1rem 0 0.3rem;">Băng chuyền khóa học</h3>
+            <div class="form-row">
+              <div class="field" style="max-width:260px;"><label>Khóa ở giữa mặc định</label>
+                <select data-cfg="default_course"><option value="">— khóa đầu tiên —</option>${D.courses.map(cc =>
+                  `<option value="${cc.id}" ${c.default_course === cc.id ? "selected" : ""}>${esc(cc.title)}</option>`).join("")}</select></div>
+              <label style="font-size:0.85rem; color:var(--muted); align-self:center;">
+                <input type="checkbox" data-cfg="autoplay" ${c.autoplay ? "checked" : ""}> tự chạy chậm (có nút tạm dừng)</label>
+              <div class="field" style="max-width:170px;"><label>Tốc độ tự chạy (giây)</label>
+                <input type="number" min="4" max="15" data-cfg="autoplay_ms" value="${Math.round((c.autoplay_ms || 6000) / 1000)}"></div>
+              <div class="field" style="max-width:220px;"><label>Nhóm thành tựu mặc định</label>
+                <select data-cfg="ach_filter">${["Tất cả","Thành tựu","Chứng chỉ","Kết quả học viên","Phản hồi","Hoạt động"].map(x =>
+                  `<option ${(c.ach_filter || "Tất cả") === x ? "selected" : ""}>${x}</option>`).join("")}</select></div>
+            </div>
+            <h3 style="margin:1rem 0 0.3rem;">Tiêu đề các phần</h3>
+            <div class="form-row">
+              <div class="field"><label>Khóa học — tiêu đề</label><input data-cfg="titles.courses" value="${esc((c.titles || {}).courses || "")}" placeholder="Các khóa học"></div>
+              <div class="field"><label>Khóa học — mô tả</label><input data-cfg="titles.courses_lead" value="${esc((c.titles || {}).courses_lead || "")}"></div>
+              <div class="field"><label>Thành tựu — tiêu đề</label><input data-cfg="titles.achieve" value="${esc((c.titles || {}).achieve || "")}" placeholder="Thành tựu &amp; Cảm nhận của học viên"></div>
+              <div class="field"><label>Thành tựu — mô tả</label><input data-cfg="titles.achieve_lead" value="${esc((c.titles || {}).achieve_lead || "")}"></div>
+            </div>
+            <div class="form-row" style="margin-top:0.6rem;">
+              <button data-act="cfgsave">💾 Lưu cài đặt</button>
+              <a class="ghost btn" style="text-decoration:none;" href="index.html?preview=1" target="_blank" rel="noopener">👁 Xem trước</a>
+            </div>
+            <p class="msg" id="lpm-cfgmsg"></p>`;
+        }
+        function paint() {
+          if (failed) {
+            root.innerHTML = `<p class="empty">Chạy <b>migration35_landing.sql</b> trong Supabase trước — sau đó mở lại tab này.</p>`;
+            return;
+          }
+          if (!loaded) { root.innerHTML = `<p class="empty">Đang tải…</p>`; return; }
+          root.innerHTML = `
+            <div class="form-row" style="gap:0.4rem; margin-bottom:0.4rem;">
+              ${Object.keys(NAMES).map(k =>
+                `<button class="${k === cur ? "" : "ghost"}" data-lpmtab="${k}">${NAMES[k]}${T[k] ? " (" + D[k].length + ")" : ""}</button>`).join("")}
+            </div>
+            ${cur === "settings" ? settingsPanel() : listPanel(cur)}`;
+          wireImages();
+        }
+
+        /* ---------- image upload (drag-drop + picker, validated) ---------- */
+        function wireImages() {
+          root.querySelectorAll(".lpm-drop").forEach(drop => {
+            const file = drop.querySelector('input[type="file"]');
+            const hid = drop.querySelector('input[type="hidden"]');
+            const prev = drop.querySelector("img");
+            const del = drop.querySelector("[data-imgdel]");
+            const msg = drop.querySelector("[data-imgmsg]");
+            const setMsg = (t, err) => { msg.textContent = t; msg.className = "msg" + (err ? " err" : ""); };
+            async function take(f) {
+              if (!f) return;
+              if (!/^image\/(jpeg|png|webp)$/i.test(f.type || "") && !/\.(jpe?g|png|webp)$/i.test(f.name || ""))
+                return setMsg('File "' + (f.name || "?") + '" không được hỗ trợ — dùng JPG, PNG hoặc WebP.', 1);
+              if (f.size > 10 * 1024 * 1024)
+                return setMsg("Ảnh " + (f.size / 1048576).toFixed(1) + " MB — vượt mức 10 MB.", 1);
+              try {
+                setMsg("⏳ Đang xử lý & tải lên…");
+                const blob = (window.UI && UI.resizeImage) ? await UI.resizeImage(f, 1600) : f;
+                const path = cur + "-" + Date.now() + ".jpg";
+                const { error } = await sb.storage.from("landing").upload(path, blob, { contentType: "image/jpeg", upsert: true });
+                if (error) throw error;
+                hid.value = sb.storage.from("landing").getPublicUrl(path).data.publicUrl;
+                prev.src = hid.value; prev.style.display = ""; del.hidden = false;
+                dirty = true;
+                setMsg("✓ Đã tải lên — nhớ bấm 💾 Lưu.");
+              } catch (err) { setMsg("Không tải được: " + (err.message || err), 1); }
+            }
+            drop.addEventListener("click", e => {
+              if (e.target.closest("[data-imgdel]")) return;
+              file.click();
+            });
+            drop.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); file.click(); } });
+            file.addEventListener("change", () => take(file.files[0]));
+            ["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => {
+              e.preventDefault(); drop.style.borderColor = "var(--accent-ink)";
+            }));
+            ["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => {
+              e.preventDefault(); drop.style.borderColor = "var(--line)";
+            }));
+            drop.addEventListener("drop", e => take(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]));
+            if (del) del.addEventListener("click", () => {
+              hid.value = ""; prev.src = ""; prev.style.display = "none"; del.hidden = true; dirty = true;
+              setMsg("Ảnh sẽ bị gỡ khi bấm 💾 Lưu.");
+            });
+          });
+          root.querySelectorAll(".lpm-form input, .lpm-form textarea, .lpm-form select")
+            .forEach(el => el.addEventListener("input", () => { dirty = true; }));
+          /* "custom" focal point asks for an explicit "x% y%" position */
+          root.querySelectorAll('select[data-k="focal"]').forEach(sel =>
+            sel.addEventListener("change", async () => {
+              if (sel.value !== "custom") return;
+              const v = await UI.promptDialog({ title: "Tâm ảnh tùy chỉnh",
+                label: 'Nhập vị trí theo dạng "50% 30%" (ngang dọc)', placeholder: "50% 30%" });
+              if (v && /^\d{1,3}% \d{1,3}%$/.test(v.trim())) {
+                const o = document.createElement("option");
+                o.value = v.trim(); o.textContent = v.trim(); o.selected = true;
+                sel.appendChild(o);
+              } else sel.value = "center";
+            }));
+        }
+
+        /* ---------- storage cleanup: only delete files no other item uses ---------- */
+        const IMG_KEYS = ["image_url", "cover_url", "avatar_url", "shot_url"];
+        function urlUsedElsewhere(url, exceptId) {
+          if (!url) return true;
+          for (const k of Object.keys(T))
+            for (const r of D[k])
+              if (r.id !== exceptId && IMG_KEYS.some(f => r[f] === url)) return true;
+          const t = (D.cfg || {}).trial || {};
+          return t.image === url;
+        }
+        async function maybeRemoveFile(url, exceptId) {
+          try {
+            if (!url || urlUsedElsewhere(url, exceptId)) return;
+            const path = String(url).split("/landing/")[1];
+            if (path) await sb.storage.from("landing").remove([path.split("?")[0]]);
+          } catch (e) { /* best effort */ }
+        }
+
+        /* ---------- CRUD ---------- */
+        async function reload(coll) {
+          const { data } = await sb.from(T[coll]).select("*").order("sort_order").order("updated_at");
+          D[coll] = data || [];
+        }
+        async function saveForm(formEl) {
+          const coll = formEl.getAttribute("data-coll");
+          const id = formEl.getAttribute("data-id");
+          const msgEl = formEl.querySelector(".lpm-msg");
+          const say = (t, err) => { msgEl.textContent = t; msgEl.className = "msg" + (err ? " err" : ""); };
+          const row = {};
+          for (const f of F[coll]) {
+            const el = formEl.querySelector(`[data-k="${f.k}"]`);
+            if (!el) continue;
+            let v = f.t === "check" ? el.checked : el.value.trim();
+            if (f.t === "course") v = v || null;
+            if (f.req && !v) return say('Thiếu "' + f.l.replace(" *", "") + '".', 1);
+            if (f.t === "url" && !okUrl(v)) return say('Liên kết "' + v + '" không hợp lệ — cần bắt đầu bằng https:// (hoặc để trống).', 1);
+            row[f.k] = v;
+          }
+          try {
+            if (id) {
+              const { error } = await sb.from(T[coll]).update(row).eq("id", id);
+              if (error) throw error;
+            } else {
+              row.sort_order = D[coll].length;
+              const { error } = await sb.from(T[coll]).insert(row);
+              if (error) throw error;
+            }
+            dirty = false; editing = null;
+            await reload(coll); paint();
+            UI.toast("✓ Đã lưu — mục " + (id ? "đã cập nhật" : "mới ở trạng thái Draft"));
+          } catch (err) { say("Không lưu được: " + (err.message || err), 1); }
+        }
+        async function persistOrder(coll) {
+          for (const [i, r] of D[coll].entries())
+            if (r.sort_order !== i) { await sb.from(T[coll]).update({ sort_order: i }).eq("id", r.id); r.sort_order = i; }
+        }
+        async function saveConfig() {
+          const msgEl = document.getElementById("lpm-cfgmsg");
+          const cfg = JSON.parse(JSON.stringify(D.cfg || {}));
+          cfg.trial = cfg.trial || {}; cfg.titles = cfg.titles || {};
+          const secEls = [...root.querySelectorAll("#lpm-secs .lesson")];
+          cfg.sections = secEls.map(el => ({
+            id: el.getAttribute("data-sec"),
+            show: el.querySelector("input[type=checkbox]").checked
+          }));
+          let bad = null;
+          root.querySelectorAll("[data-cfg]").forEach(el => {
+            const path = el.getAttribute("data-cfg").split(".");
+            let v = el.type === "checkbox" ? el.checked : el.value.trim();
+            if (el.getAttribute("data-cfg") === "autoplay_ms") v = Math.min(15, Math.max(4, +v || 6)) * 1000;
+            if (/url|image/.test(path[path.length - 1]) && typeof v === "string" && !okUrl(v)) bad = v;
+            if (path.length === 2) { cfg[path[0]] = cfg[path[0]] || {}; cfg[path[0]][path[1]] = v; }
+            else cfg[path[0]] = v;
+          });
+          if (bad !== null) { msgEl.textContent = 'Liên kết "' + bad + '" không hợp lệ (cần https://… hoặc để trống).'; msgEl.className = "msg err"; return; }
+          try {
+            const { error } = await sb.from("landing_settings").upsert({ id: 1, config: cfg });
+            if (error) throw error;
+            D.cfg = cfg; dirty = false;
+            msgEl.textContent = "✓ Đã lưu — trang chủ cập nhật ngay lần tải tiếp theo."; msgEl.className = "msg";
+          } catch (err) { msgEl.textContent = "Không lưu được: " + (err.message || err); msgEl.className = "msg err"; }
+        }
+
+        /* ---------- events ---------- */
+        root.addEventListener("click", e => {
+          const tabBtn = e.target.closest("[data-lpmtab]");
+          if (tabBtn) return guardDirty(() => { cur = tabBtn.getAttribute("data-lpmtab"); paint(); });
+          const b = e.target.closest("[data-act]");
+          if (!b) return;
+          const act = b.getAttribute("data-act");
+          const coll = b.getAttribute("data-coll");
+          const id = b.getAttribute("data-id");
+          if (act === "save") return saveForm(b.closest(".lpm-form"));
+          if (act === "cancel") return guardDirty(paint);
+          if (act === "add") return guardDirty(() => { editing = { coll, id: null, draft: {} }; paint(); });
+          if (act === "edit") return guardDirty(() => {
+            editing = { coll, id, draft: { ...D[coll].find(r => r.id === id) } }; paint();
+          });
+          if (act === "dup") {
+            const src = D[coll].find(r => r.id === id); if (!src) return;
+            const copy = { ...src }; delete copy.id; delete copy.updated_at;
+            copy.status = "draft"; copy.sort_order = D[coll].length;
+            const tk = TITLE_OF[coll](copy); if (copy.title) copy.title = tk + " (bản sao)";
+            sb.from(T[coll]).insert(copy).then(async ({ error }) => {
+              if (error) return UI.toast("Không nhân bản được: " + error.message, "err");
+              await reload(coll); paint(); UI.toast("⧉ Đã tạo bản sao (Draft)");
+            });
+            return;
+          }
+          if (act === "del") {
+            const r = D[coll].find(x => x.id === id); if (!r) return;
+            UI.confirmDialog({ title: 'Xóa "' + (TITLE_OF[coll](r) || "mục này") + '"?', danger: true,
+              okText: "Xóa vĩnh viễn",
+              body: "Mục sẽ biến mất khỏi landing page ngay lập tức. Ảnh đính kèm chỉ bị xóa nếu không mục nào khác dùng chung. Không thể hoàn tác." })
+              .then(async ok => {
+                if (!ok) return;
+                const { error } = await sb.from(T[coll]).delete().eq("id", id);
+                if (error) return UI.toast("Không xóa được: " + error.message, "err");
+                for (const k of IMG_KEYS) if (r[k]) await maybeRemoveFile(r[k], id);
+                await reload(coll); paint(); UI.toast("🗑 Đã xóa");
+              });
+            return;
+          }
+          if (act === "up" || act === "down") {
+            const i = D[coll].findIndex(r => r.id === id);
+            const j = act === "up" ? i - 1 : i + 1;
+            if (j < 0 || j >= D[coll].length) return;
+            [D[coll][i], D[coll][j]] = [D[coll][j], D[coll][i]];
+            persistOrder(coll).then(paint);
+            return;
+          }
+          if (act === "secup" || act === "secdown") {
+            const list = [...root.querySelectorAll("#lpm-secs .lesson")];
+            const i = +b.getAttribute("data-i");
+            const j = act === "secup" ? i - 1 : i + 1;
+            if (j < 0 || j >= list.length) return;
+            const doSwap = () => {
+              const parent = list[0].parentElement;
+              if (act === "secup") parent.insertBefore(list[i], list[j]);
+              else parent.insertBefore(list[j], list[i]);
+              [...parent.children].forEach((el, k2) => {
+                const u = el.querySelector('[data-act="secup"]'), d = el.querySelector('[data-act="secdown"]');
+                u.setAttribute("data-i", k2); d.setAttribute("data-i", k2);
+                u.disabled = k2 === 0; d.disabled = k2 === parent.children.length - 1;
+              });
+              dirty = true;
+            };
+            if (list[i].getAttribute("data-sec") === "trial" && act === "secdown")
+              UI.confirmDialog({ title: "Chuyển 'Học thử miễn phí' khỏi vị trí đầu?", danger: true,
+                body: "Đây là khu vực chuyển đổi chính — nên luôn là phần đầu tiên khách nhìn thấy.",
+                okText: "Vẫn chuyển xuống" }).then(ok => { if (ok) doSwap(); });
+            else doSwap();
+            return;
+          }
+          if (act === "cfgsave") return saveConfig();
+          if (act === "multi") return document.getElementById("lpm-multi").click();
+        });
+        root.addEventListener("change", async e => {
+          const sel = e.target.closest('select[data-act="status"]');
+          if (sel) {
+            if (dirty) {
+              UI.toast("Hãy 💾 Lưu hoặc Hủy biểu mẫu đang mở trước khi đổi trạng thái.", "err");
+              paint(); return;
+            }
+            const coll = sel.getAttribute("data-coll"), id = sel.getAttribute("data-id");
+            const { error } = await sb.from(T[coll]).update({ status: sel.value }).eq("id", id);
+            if (error) {
+              UI.toast(coll === "fb" && /permission/i.test(error.message)
+                ? "Chưa đăng được: hãy mở ✏️ và tick 'ĐÃ xin phép học viên' trước."
+                : "Không đổi được trạng thái: " + error.message, "err");
+            } else UI.toast("✓ " + sel.value);
+            await reload(coll); paint();
+            return;
+          }
+          if (e.target.id === "lpm-multi") {
+            const files = [...e.target.files];
+            for (const f of files) {
+              if (f.size > 10 * 1024 * 1024 || !/^image\/(jpeg|png|webp)$/i.test(f.type || "")) continue;
+              try {
+                const blob = (window.UI && UI.resizeImage) ? await UI.resizeImage(f, 1600) : f;
+                const path = "gal-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7) + ".jpg";
+                const { error } = await sb.storage.from("landing").upload(path, blob, { contentType: "image/jpeg" });
+                if (error) continue;
+                await sb.from("landing_gallery").insert({
+                  image_url: sb.storage.from("landing").getPublicUrl(path).data.publicUrl,
+                  image_alt: f.name.replace(/\.[a-z]+$/i, ""), sort_order: D.gal.length
+                });
+              } catch (err) {}
+            }
+            await reload("gal"); paint();
+            UI.toast("⬆ Đã tải " + files.length + " ảnh (Draft — thêm mô tả rồi Publish)");
+          }
+        });
+
+        window.__lpmInit = async function () {
+          if (loaded || failed) { paint(); return; }
+          paint();
+          await load();
+          paint();
+        };
+      })();
+      // =============== END LANDING PAGE CMS ===============
 
       document.getElementById("e-add").addEventListener("click", async () => {
         const student_id = document.getElementById("e-student").value;
