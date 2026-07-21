@@ -328,7 +328,79 @@
     }
     .lpx-lb .prev { left: 14px; } .lpx-lb .next { right: 14px; }
 
+    /* ============ animated brand background (decorative only) ============
+       A fixed, non-interactive stack behind the page: the static photo,
+       slow-drifting pale-blue waves, two gently swaying leaf sprigs and a
+       few warm-gold motes in the corners. Only transform/opacity animate.  */
+    html { background: var(--paper); }
+    body { background: transparent; }
+    #lpBg {
+      position: fixed; inset: 0; z-index: -1;
+      overflow: hidden; pointer-events: none;
+    }
+    #lpBg > * { position: absolute; inset: 0; }
+    /* brand-coloured base — also the fallback when landing-bg.jpg is absent */
+    .bgx-base {
+      background:
+        radial-gradient(115% 85% at 0% 0%, #17325c 0%, #2c5490 10%, rgba(176,199,231,.5) 30%, rgba(244,246,250,0) 52%),
+        radial-gradient(115% 85% at 100% 100%, #17325c 0%, #2c5490 10%, rgba(176,199,231,.5) 30%, rgba(244,246,250,0) 52%),
+        linear-gradient(155deg, #fcfbf7 0%, #f5f7fb 48%, #eef2f9 100%);
+    }
+    .bgx-photo { background: url("landing-bg.jpg") center / cover no-repeat; }
+    /* keeps the middle bright so headings and cards stay readable */
+    .bgx-veil { background: radial-gradient(closest-side at 50% 42%, rgba(255,255,255,.5), rgba(255,255,255,0) 78%); }
+    [data-theme="dark"] #lpBg { opacity: .3; }
+    [data-theme="dark"] .bgx-veil { display: none; }
+
+    /* parallax wrappers: only these translate, so they never fight the
+       keyframe transforms running on the artwork inside them */
+    .bgx-p {
+      transform: translate3d(calc(var(--mx, 0) * var(--d, 0) * 1px),
+                             calc(var(--my, 0) * var(--d, 0) * 1px), 0);
+      transition: transform .8s cubic-bezier(.22,.8,.3,1);
+      will-change: transform;
+    }
+    /* pale-blue waves — extremely slow diagonal drift */
+    .bgx-waves { width: 118%; height: 100%; left: -9%; }
+    .bgx-waves path { fill: none; stroke-linecap: round; }
+    .wv1 { stroke: rgba(120,158,208,.20); stroke-width: 42;
+           animation: bgxDrift 68s ease-in-out infinite alternate; }
+    .wv2 { stroke: rgba(163,190,225,.16); stroke-width: 26;
+           animation: bgxDrift 92s -12s ease-in-out infinite alternate-reverse; }
+    @keyframes bgxDrift {
+      from { transform: translate3d(-1.6%, .6%, 0); }
+      to   { transform: translate3d(1.6%, -.6%, 0); }
+    }
+    /* leaf sprigs: each group sways on its own clock so it reads as breeze */
+    .bgx-sprig { position: absolute; width: clamp(210px, 33vw, 460px); height: auto; }
+    .bgx-tl { top: -2%; left: -2%; }
+    .bgx-br { bottom: -3%; right: -2%; transform: scale(-1); }
+    .bgx-sprig .stem { fill: none; stroke: rgba(201,151,58,.40); stroke-width: 1.6; }
+    .bgx-sprig .sw { transform-box: fill-box; transform-origin: 2% 62%; }
+    .sw-a { animation: bgxSway 9s   ease-in-out infinite alternate; }
+    .sw-b { animation: bgxSway 7.4s -1.8s ease-in-out infinite alternate-reverse; }
+    .sw-c { animation: bgxSway 10.6s -3.2s ease-in-out infinite alternate; }
+    @keyframes bgxSway { from { transform: rotate(-1.1deg); } to { transform: rotate(1.5deg); } }
+
+    /* warm-gold motes, corners only — never over headings or cards */
+    .bgx-dust i {
+      position: absolute; left: var(--x); top: var(--y);
+      width: 5px; height: 5px; border-radius: 50%; opacity: 0;
+      background: radial-gradient(circle, rgba(233,200,119,.95), rgba(233,200,119,0) 70%);
+      animation: bgxFloat var(--t) var(--dl) ease-in-out infinite;
+    }
+    @keyframes bgxFloat {
+      0%, 100% { transform: translate3d(0, 0, 0) scale(.85); opacity: 0; }
+      25%  { opacity: .45; }
+      50%  { transform: translate3d(4px, -30px, 0) scale(1.08); opacity: .7; }
+      75%  { opacity: .3; }
+    }
+
     @media (max-width: 640px) {
+      /* phones: keep the artwork, drop the motion */
+      .bgx-dust { display: none; }
+      .bgx-sprig .sw, .bgx-waves path { animation: none; }
+      .bgx-sprig { width: 46vw; }
       .lpx-stage { height: clamp(230px, 66vw, 300px); }
       .lpx-card { width: 84vw; margin-left: -42vw; }
       .lpx-tstage { height: calc(44vw + 210px); }
@@ -337,10 +409,101 @@
     @media (prefers-reduced-motion: reduce) {
       .lpx-card, .lpx-info, .lpx-trc, .lpx-acard, .btn, .lp-feat .f { transition: none !important; }
       .lpx-skel::after { animation: none; }
+      /* static background only: artwork stays, every motion stops */
+      #lpBg .sw, #lpBg path, #lpBg .bgx-dust i { animation: none !important; }
+      .bgx-p { transform: none !important; transition: none !important; }
+      .bgx-dust { display: none; }
     }
   </style>
 </head>
 <body>
+
+  <!-- ============ decorative animated background ============
+       Purely visual: aria-hidden, pointer-events:none, sits behind
+       everything at z-index:-1 and cannot cause horizontal scrolling. -->
+  <div id="lpBg" aria-hidden="true">
+    <div class="bgx-base"></div>
+    <div class="bgx-photo"></div>
+    <div class="bgx-veil"></div>
+
+    <div class="bgx-p" style="--d:4">
+      <svg class="bgx-waves" viewBox="0 0 1600 900" preserveAspectRatio="none" focusable="false">
+        <path class="wv1" d="M-120 300 C 300 190, 690 385, 1090 258 S 1500 172, 1760 236" />
+        <path class="wv2" d="M-120 645 C 250 725, 620 558, 985 662 S 1455 762, 1760 690" />
+      </svg>
+    </div>
+
+    <div class="bgx-p" style="--d:9">
+      <svg class="bgx-sprig bgx-tl" viewBox="0 0 420 330" focusable="false">
+        <defs>
+          <linearGradient id="bgGold1" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#f0d9a0" /><stop offset="1" stop-color="#c9973a" />
+          </linearGradient>
+          <linearGradient id="bgNavy1" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#a8bcda" /><stop offset="1" stop-color="#4a6fa5" />
+          </linearGradient>
+          <path id="bgLeaf1" d="M0 0C10-12 30-14 42 0C30 14 10 12 0 0Z" />
+        </defs>
+        <path class="stem" d="M-8 28 C 88 54, 164 44, 234 120" />
+        <g class="sw sw-a" opacity=".85">
+          <use href="#bgLeaf1" fill="url(#bgGold1)" transform="translate(24 30) rotate(-40)" />
+          <use href="#bgLeaf1" fill="url(#bgNavy1)" transform="translate(44 44) rotate(24) scale(.9)" />
+          <use href="#bgLeaf1" fill="url(#bgGold1)" transform="translate(76 44) rotate(-16) scale(1.1)" />
+        </g>
+        <g class="sw sw-b" opacity=".8">
+          <use href="#bgLeaf1" fill="url(#bgNavy1)" transform="translate(114 50) rotate(-44)" />
+          <use href="#bgLeaf1" fill="url(#bgGold1)" transform="translate(134 58) rotate(16) scale(1.15)" />
+          <use href="#bgLeaf1" fill="url(#bgGold1)" transform="translate(163 66) rotate(-26) scale(.95)" />
+        </g>
+        <g class="sw sw-c" opacity=".75">
+          <use href="#bgLeaf1" fill="url(#bgGold1)" transform="translate(198 92) rotate(-30)" />
+          <use href="#bgLeaf1" fill="url(#bgNavy1)" transform="translate(214 106) rotate(32) scale(.9)" />
+        </g>
+      </svg>
+    </div>
+
+    <div class="bgx-p" style="--d:12">
+      <svg class="bgx-sprig bgx-br" viewBox="0 0 420 330" focusable="false">
+        <defs>
+          <linearGradient id="bgGold2" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#f0d9a0" /><stop offset="1" stop-color="#c9973a" />
+          </linearGradient>
+          <linearGradient id="bgNavy2" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#a8bcda" /><stop offset="1" stop-color="#4a6fa5" />
+          </linearGradient>
+          <path id="bgLeaf2" d="M0 0C10-12 30-14 42 0C30 14 10 12 0 0Z" />
+        </defs>
+        <path class="stem" d="M-8 34 C 96 60, 172 48, 240 126" />
+        <g class="sw sw-b" opacity=".85">
+          <use href="#bgLeaf2" fill="url(#bgGold2)" transform="translate(30 36) rotate(-34)" />
+          <use href="#bgLeaf2" fill="url(#bgNavy2)" transform="translate(52 48) rotate(28) scale(.92)" />
+          <use href="#bgLeaf2" fill="url(#bgGold2)" transform="translate(84 50) rotate(-18) scale(1.08)" />
+        </g>
+        <g class="sw sw-c" opacity=".8">
+          <use href="#bgLeaf2" fill="url(#bgGold2)" transform="translate(122 56) rotate(-40) scale(1.05)" />
+          <use href="#bgLeaf2" fill="url(#bgNavy2)" transform="translate(146 64) rotate(18)" />
+          <use href="#bgLeaf2" fill="url(#bgGold2)" transform="translate(174 74) rotate(-22) scale(.95)" />
+        </g>
+        <g class="sw sw-a" opacity=".7">
+          <use href="#bgLeaf2" fill="url(#bgGold2)" transform="translate(206 98) rotate(-28) scale(1.05)" />
+          <use href="#bgLeaf2" fill="url(#bgNavy2)" transform="translate(222 112) rotate(34) scale(.88)" />
+        </g>
+      </svg>
+    </div>
+
+    <div class="bgx-p" style="--d:6">
+      <div class="bgx-dust">
+        <i style="--x:5%;  --y:16%; --t:17s; --dl:0s"></i>
+        <i style="--x:11%; --y:29%; --t:21s; --dl:-6s"></i>
+        <i style="--x:16%; --y:9%;  --t:15s; --dl:-11s"></i>
+        <i style="--x:3%;  --y:44%; --t:23s; --dl:-3s"></i>
+        <i style="--x:90%; --y:74%; --t:19s; --dl:-8s"></i>
+        <i style="--x:95%; --y:88%; --t:16s; --dl:-2s"></i>
+        <i style="--x:84%; --y:93%; --t:22s; --dl:-13s"></i>
+        <i style="--x:97%; --y:58%; --t:18s; --dl:-5s"></i>
+      </div>
+    </div>
+  </div>
 
   <header class="lp-header">
     <img src="icons/icon-192.png" alt="Learning Ecology" />
@@ -1014,6 +1177,31 @@
       } catch (e) {}
     });
   })();
+  </script>
+  <script>
+    // Very light cursor parallax for the decorative background only.
+    // Desktop pointers only; skipped entirely on touch devices and when the
+    // visitor prefers reduced motion. Writes two CSS variables (rAF-throttled)
+    // that shift the decorative layers a few pixels — no text, button, card
+    // or other functional element is ever moved.
+    (function () {
+      var bg = document.getElementById("lpBg");
+      if (!bg || !window.matchMedia) return;
+      if (!matchMedia("(pointer: fine)").matches) return;
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      var queued = false, mx = 0, my = 0;
+      addEventListener("mousemove", function (e) {
+        mx = (e.clientX / innerWidth) * 2 - 1;
+        my = (e.clientY / innerHeight) * 2 - 1;
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(function () {
+          queued = false;
+          bg.style.setProperty("--mx", mx.toFixed(3));
+          bg.style.setProperty("--my", my.toFixed(3));
+        });
+      }, { passive: true });
+    })();
   </script>
   <script>
     // PWA: offline shell + installability (needs HTTPS, e.g. GitHub Pages)
